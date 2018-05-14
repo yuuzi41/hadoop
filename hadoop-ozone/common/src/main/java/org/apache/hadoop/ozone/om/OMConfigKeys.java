@@ -86,4 +86,13 @@ public final class OMConfigKeys {
   public static final String OZONE_OM_METRICS_SAVE_INTERVAL =
       "ozone.om.save.metrics.interval";
   public static final String OZONE_OM_METRICS_SAVE_INTERVAL_DEFAULT = "5m";
+
+  public static final String OZONE_OM_KERBEROS_KEYTAB_FILE_KEY = "ozone.om."
+      + "kerberos.keytab.file";
+  public static final String OZONE_OM_KERBEROS_PRINCIPAL_KEY = "ozone.om"
+      + ".kerberos.principal";
+  public static final String OZONE_OM_WEB_AUTHENTICATION_KERBEROS_KEYTAB_FILE =
+      "ozone.om.http.kerberos.keytab.file";
+  public static final String OZONE_OM_WEB_AUTHENTICATION_KERBEROS_PRINCIPAL_KEY
+      = "ozone.om.http.kerberos.principal";
 }
