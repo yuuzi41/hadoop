@@ -508,7 +508,6 @@
     </description>
   </property>
   <property>
-<<<<<<< HEAD
     <name>ozone.om.keytab.file</name>
     <value/>
     <tag>OM, SECURITY</tag>
@@ -518,9 +517,6 @@
   </property>
   <property>
     <name>ozone.om.db.cache.size.mb</name>
-=======
-    <name>ozone.ksm.db.cache.size.mb</name>
->>>>>>> HDDS-70. Fix config names for secure ksm and scm. Contributed by Ajay Kumar.
     <value>128</value>
     <tag>OM, PERFORMANCE</tag>
     <description>
@@ -1031,7 +1027,7 @@
   </property>
 
   <property>
-    <name>hdds.scm.container.creation.lease.timeout</name>
+    <name>ozone.scm.container.creation.lease.timeout</name>
     <value>60s</value>
     <tag>OZONE, SCM</tag>
     <description>
@@ -1085,11 +1081,7 @@
     </description>
   </property>
   <property>
-<<<<<<< HEAD
     <name>hdds.container.close.threshold</name>
-=======
-    <name>hdds.scm.container.close.threshold</name>
->>>>>>> HDDS-70. Fix config names for secure ksm and scm. Contributed by Ajay Kumar.
     <value>0.9f</value>
     <tag>OZONE, DATANODE</tag>
     <description>
@@ -1293,8 +1285,8 @@
       datanode unless the datanode confirms the completion.
     </description>
   </property>
+
   <property>
-<<<<<<< HEAD
     <name>hdds.db.profile</name>
     <value>DISK</value>
     <tag>OZONE, OM, PERFORMANCE</tag>
@@ -1302,6 +1294,7 @@
     that tunes the RocksDB settings for the hardware it is running
     on. Right now, we have SSD and DISK as profile options.</description>
   </property>
+
   <property>
     <name>hdds.datanode.replication.work.dir</name>
     <tag>DATANODE</tag>
@@ -1401,6 +1394,14 @@
     <description>Time interval used to store the omMetrics in to a
       file. Background thread perodically stores the OM metrics in to a
       file. Unit could be defined with postfix (ns,ms,s,m,h,d)
+    </description>
+  </property>
+  <property>
+    <name>ozone.security.enabled</name>
+    <value>false</value>
+    <tag> OZONE, SECURITY, FLAG</tag>
+    <description>True if security is enabled for ozone. When this property is
+     true, hadoop.security.authentication should be Kerberos.
     </description>
   </property>
 
