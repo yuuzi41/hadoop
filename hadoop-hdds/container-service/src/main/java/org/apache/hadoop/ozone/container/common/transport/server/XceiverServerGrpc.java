@@ -21,9 +21,15 @@ package org.apache.hadoop.ozone.container.common.transport.server;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
+import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
     .ContainerCommandRequestProto;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.protocol.proto
+        .StorageContainerDatanodeProtocolProtos.PipelineReport;
+import org.apache.hadoop.hdds.scm.container.common.helpers.PipelineID;
+import org.apache.hadoop.hdds.scm.container.common.helpers.
+    StorageContainerException;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
 import org.apache.hadoop.ozone.container.common.interfaces.ContainerDispatcher;
 
@@ -38,6 +44,9 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.SocketAddress;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Creates a Grpc server endpoint that acts as the communication layer for
@@ -47,6 +56,7 @@ public final class XceiverServerGrpc implements XceiverServerSpi {
   private static final Logger
       LOG = LoggerFactory.getLogger(XceiverServerGrpc.class);
   private int port;
+  private UUID id;
   private Server server;
   private final ContainerDispatcher storageContainer;
 
@@ -59,6 +69,7 @@ public final class XceiverServerGrpc implements XceiverServerSpi {
       ContainerDispatcher dispatcher, BindableService... additionalServices) {
     Preconditions.checkNotNull(conf);
 
+    this.id = datanodeDetails.getUuid();
     this.port = conf.getInt(OzoneConfigKeys.DFS_CONTAINER_IPC_PORT,
         OzoneConfigKeys.DFS_CONTAINER_IPC_PORT_DEFAULT);
     // Get an available port on current node and
@@ -120,7 +131,20 @@ public final class XceiverServerGrpc implements XceiverServerSpi {
 
   @Override
   public void submitRequest(ContainerCommandRequestProto request,
-      HddsProtos.PipelineID pipelineID) {
-    storageContainer.dispatch(request);
+      HddsProtos.PipelineID pipelineID) throws IOException {
+    ContainerProtos.ContainerCommandResponseProto response =
+        storageContainer.dispatch(request);
+    if (response.getResult() != ContainerProtos.Result.SUCCESS) {
+      throw new StorageContainerException(response.getMessage(),
+          response.getResult());
+    }
+  }
+
+  @Override
+  public List<PipelineReport> getPipelineReport() {
+    return Collections.singletonList(
+            PipelineReport.newBuilder()
+                    .setPipelineID(PipelineID.valueOf(id).getProtobuf())
+                    .build());
   }
 }

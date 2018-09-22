@@ -258,8 +258,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         hParser.printGenericCommandUsage(System.err);
         System.exit(1);
       }
-      StringUtils.startupShutdownMessage(OzoneManager.class, argv, LOG);
-      OzoneManager om = createOm(hParser.getRemainingArgs(), conf);
+      OzoneManager om = createOm(hParser.getRemainingArgs(), conf, true);
       if (om != null) {
         om.start();
         om.join();
@@ -277,14 +276,33 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   /**
    * Constructs OM instance based on command line arguments.
    *
+   * This method is intended for unit tests only. It suppresses the
+   * startup/shutdown message and skips registering Unix signal
+   * handlers.
+   *
    * @param argv Command line arguments
    * @param conf OzoneConfiguration
    * @return OM instance
    * @throws IOException in case OM instance creation fails.
    */
+  @VisibleForTesting
+  public static OzoneManager createOm(
+      String[] argv, OzoneConfiguration conf) throws IOException {
+    return createOm(argv, conf, false);
+  }
 
-  public static OzoneManager createOm(String[] argv,
-      OzoneConfiguration conf) throws IOException {
+
+  /**
+   * Constructs OM instance based on command line arguments.
+   *
+   * @param argv Command line arguments
+   * @param conf OzoneConfiguration
+   * @param printBanner if true then log a verbose startup message.
+   * @return OM instance
+   * @throws IOException in case OM instance creation fails.
+   */
+  private static OzoneManager createOm(String[] argv,
+      OzoneConfiguration conf, boolean printBanner) throws IOException {
     if (!isHddsEnabled(conf)) {
       System.err.println("OM cannot be started in secure mode or when " +
           OZONE_ENABLED + " is set to false");
@@ -298,6 +316,9 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     }
     switch (startOpt) {
     case CREATEOBJECTSTORE:
+      if (printBanner) {
+        StringUtils.startupShutdownMessage(OzoneManager.class, argv, LOG);
+      }
       terminate(omInit(conf) ? 0 : 1);
       return null;
     case HELP:
@@ -305,6 +326,12 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       terminate(0);
       return null;
     default:
+      if (argv == null) {
+        argv = new String[]{};
+      }
+      if (printBanner) {
+        StringUtils.startupShutdownMessage(OzoneManager.class, argv, LOG);
+      }
       return new OzoneManager(conf);
     }
   }

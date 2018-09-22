@@ -18,6 +18,13 @@ package org.apache.hadoop.hdds.scm;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hdds.protocol.proto
+        .StorageContainerDatanodeProtocolProtos.PipelineReportsProto;
+import org.mockito.Mockito;
+import static org.mockito.Mockito.when;
+
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.LifeCycleState;
+import org.apache.hadoop.hdds.protocol.proto
     .StorageContainerDatanodeProtocolProtos.ContainerInfo;
 import org.apache.hadoop.hdds.protocol.proto
     .StorageContainerDatanodeProtocolProtos.ContainerReportsProto;
@@ -31,12 +38,18 @@ import org.apache.hadoop.hdds.protocol.proto
         .StorageContainerDatanodeProtocolProtos.StorageReportProto;
 import org.apache.hadoop.hdds.protocol.proto
     .StorageContainerDatanodeProtocolProtos.StorageTypeProto;
+import org.apache.hadoop.hdds.scm.container.ContainerStateManager;
+import org.apache.hadoop.hdds.scm.container.common.helpers.Pipeline;
+import org.apache.hadoop.hdds.scm.container.common.helpers.PipelineID;
+import org.apache.hadoop.hdds.scm.exceptions.SCMException;
 import org.apache.hadoop.hdds.scm.node.SCMNodeManager;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
+import org.apache.hadoop.hdds.scm.pipelines.PipelineSelector;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.protocol.commands.RegisteredCommand;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -128,7 +141,8 @@ public final class TestUtils {
   public static DatanodeDetails createRandomDatanodeAndRegister(
       SCMNodeManager nodeManager) {
     return getDatanodeDetails(
-        nodeManager.register(randomDatanodeDetails(), null));
+        nodeManager.register(randomDatanodeDetails(), null,
+                getRandomPipelineReports()));
   }
 
   /**
@@ -288,6 +302,11 @@ public final class TestUtils {
     return getContainerReports(containerInfos);
   }
 
+
+  public static PipelineReportsProto getRandomPipelineReports() {
+    return PipelineReportsProto.newBuilder().build();
+  }
+
   /**
    * Creates container report with the given ContainerInfo(s).
    *
@@ -376,5 +395,39 @@ public final class TestUtils {
     return report.build();
   }
 
+  public static
+      org.apache.hadoop.hdds.scm.container.common.helpers.ContainerInfo
+      allocateContainer(ContainerStateManager containerStateManager)
+      throws IOException {
 
+    PipelineSelector pipelineSelector = Mockito.mock(PipelineSelector.class);
+
+    Pipeline pipeline = new Pipeline("leader", HddsProtos.LifeCycleState.CLOSED,
+        HddsProtos.ReplicationType.STAND_ALONE,
+        HddsProtos.ReplicationFactor.THREE,
+        PipelineID.randomId());
+
+    when(pipelineSelector
+        .getReplicationPipeline(HddsProtos.ReplicationType.STAND_ALONE,
+            HddsProtos.ReplicationFactor.THREE)).thenReturn(pipeline);
+
+    return containerStateManager
+        .allocateContainer(pipelineSelector,
+            HddsProtos.ReplicationType.STAND_ALONE,
+            HddsProtos.ReplicationFactor.THREE, "root").getContainerInfo();
+
+  }
+
+  public static void closeContainer(ContainerStateManager containerStateManager,
+      org.apache.hadoop.hdds.scm.container.common.helpers.ContainerInfo
+          container)
+      throws SCMException {
+
+    containerStateManager.getContainerStateMap()
+        .updateState(container, container.getState(), LifeCycleState.CLOSING);
+
+    containerStateManager.getContainerStateMap()
+        .updateState(container, container.getState(), LifeCycleState.CLOSED);
+
+  }
 }

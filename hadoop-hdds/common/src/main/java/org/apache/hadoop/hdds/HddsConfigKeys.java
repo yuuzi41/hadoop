@@ -46,6 +46,11 @@ public final class HddsConfigKeys {
   public static final String HDDS_CONTAINER_REPORT_INTERVAL_DEFAULT =
       "60s";
 
+  public static final String HDDS_PIPELINE_REPORT_INTERVAL =
+          "hdds.pipeline.report.interval";
+  public static final String HDDS_PIPELINE_REPORT_INTERVAL_DEFAULT =
+          "60s";
+
   public static final String HDDS_COMMAND_STATUS_REPORT_INTERVAL =
       "hdds.command.status.report.interval";
   public static final String HDDS_COMMAND_STATUS_REPORT_INTERVAL_DEFAULT =
@@ -74,5 +79,19 @@ public final class HddsConfigKeys {
   public static final String HDDS_CONTAINER_CLOSE_THRESHOLD =
       "hdds.container.close.threshold";
   public static final float HDDS_CONTAINER_CLOSE_THRESHOLD_DEFAULT = 0.9f;
+
+  public static final String HDDS_SCM_CHILLMODE_ENABLED =
+      "hdds.scm.chillmode.enabled";
+  public static final boolean HDDS_SCM_CHILLMODE_ENABLED_DEFAULT = true;
+
+  // % of containers which should have at least one reported replica
+  // before SCM comes out of chill mode.
+  public static final String HDDS_SCM_CHILLMODE_THRESHOLD_PCT =
+      "hdds.scm.chillmode.threshold.pct";
+  public static final double HDDS_SCM_CHILLMODE_THRESHOLD_PCT_DEFAULT = 0.99;
+
+  public static final String HDDS_LOCK_MAX_CONCURRENCY =
+      "hdds.lock.max.concurrency";
+  public static final int HDDS_LOCK_MAX_CONCURRENCY_DEFAULT = 100;
 
 }

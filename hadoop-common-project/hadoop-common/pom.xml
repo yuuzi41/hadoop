@@ -324,6 +324,11 @@
       <artifactId>mockwebserver</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>dnsjava</groupId>
+      <artifactId>dnsjava</artifactId>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -1079,6 +1084,8 @@
                             <argument>--projecttitle</argument>
                             <argument>Apache Hadoop</argument>
                             <argument>--usetoday</argument>
+                            <argument>--fileversions</argument>
+                            <argument>--dirversions</argument>
                             <argument>--version</argument>
                             <argument>${project.version}</argument>
                         </arguments>
