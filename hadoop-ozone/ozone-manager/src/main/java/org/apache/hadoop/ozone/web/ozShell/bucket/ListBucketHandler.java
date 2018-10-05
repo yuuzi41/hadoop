@@ -71,8 +71,16 @@ public class ListBucketHandler extends Handler {
 
     URI ozoneURI = verifyURI(uri);
     Path path = Paths.get(ozoneURI.getPath());
-    if (path.getNameCount() < 1) {
-      throw new OzoneClientException("volume is required in listBucket");
+    int pathNameCount = path.getNameCount();
+    if (pathNameCount != 1) {
+      String errorMessage;
+      if (pathNameCount < 1) {
+        errorMessage = "volume is required in listBucket";
+      } else {
+        errorMessage = "Invalid volume name. Delimiters (/) not allowed in " +
+            "volume name";
+      }
+      throw new OzoneClientException(errorMessage);
     }
 
     if (maxBuckets < 1) {
@@ -88,7 +96,8 @@ public class ListBucketHandler extends Handler {
 
 
     OzoneVolume vol = client.getObjectStore().getVolume(volumeName);
-    Iterator<OzoneBucket> bucketIterator = vol.listBuckets(prefix, startBucket);
+    Iterator<? extends OzoneBucket> bucketIterator =
+        vol.listBuckets(prefix, startBucket);
     List<BucketInfo> bucketList = new ArrayList<>();
     while (maxBuckets > 0 && bucketIterator.hasNext()) {
       BucketInfo bucketInfo =

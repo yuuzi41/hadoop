@@ -72,8 +72,8 @@ import org.apache.hadoop.security.UserGroupInformation;
  * Configuration, URI, AtomicBoolean)}, which will create either an HA- or
  * non-HA-enabled client proxy as appropriate.
  *
- * For creating proxy objects with other protocols, please see the server-side
- * counterpart {@code NameNodeProxies#createProxy}
+ * For creating proxy objects with other protocols, please see
+ * NameNodeProxies#createProxy(Configuration, URI, Class).
  */
 @InterfaceAudience.Private
 public class NameNodeProxiesClient {

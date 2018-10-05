@@ -20,7 +20,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <groupId>org.apache.hadoop</groupId>
     <artifactId>hadoop-project</artifactId>
-    <version>3.2.0-SNAPSHOT</version>
+    <version>3.3.0-SNAPSHOT</version>
     <relativePath>../hadoop-project</relativePath>
   </parent>
   <artifactId>hadoop-ozone</artifactId>
@@ -43,6 +43,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <module>integration-test</module>
     <module>objectstore-service</module>
     <module>datanode</module>
+    <module>s3gateway</module>
     <module>dist</module>
     <module>docs</module>
   </modules>
@@ -179,6 +180,17 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
               <outputFilterFile>true</outputFilterFile>
               <includeScope>runtime</includeScope>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>

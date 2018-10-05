@@ -28,6 +28,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -62,9 +63,12 @@ import org.apache.hadoop.fs.azurebfs.contracts.exceptions.FileSystemOperationUnh
 import org.apache.hadoop.fs.azurebfs.contracts.exceptions.InvalidUriAuthorityException;
 import org.apache.hadoop.fs.azurebfs.contracts.exceptions.InvalidUriException;
 import org.apache.hadoop.fs.azurebfs.contracts.services.AzureServiceErrorCode;
+import org.apache.hadoop.fs.azurebfs.extensions.AbfsAuthorizationException;
+import org.apache.hadoop.fs.azurebfs.extensions.AbfsAuthorizer;
 import org.apache.hadoop.fs.azurebfs.security.AbfsDelegationTokenManager;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.AclStatus;
+import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -87,6 +91,7 @@ public class AzureBlobFileSystem extends FileSystem {
 
   private boolean delegationTokenEnabled = false;
   private AbfsDelegationTokenManager delegationTokenManager;
+  private AbfsAuthorizer authorizer;
 
   @Override
   public void initialize(URI uri, Configuration configuration)
@@ -100,7 +105,7 @@ public class AzureBlobFileSystem extends FileSystem {
     this.uri = URI.create(uri.getScheme() + "://" + uri.getAuthority());
     this.userGroupInformation = UserGroupInformation.getCurrentUser();
     this.user = userGroupInformation.getUserName();
-    this.abfsStore = new AzureBlobFileSystemStore(uri, this.isSecure(), configuration, userGroupInformation);
+    this.abfsStore = new AzureBlobFileSystemStore(uri, this.isSecureScheme(), configuration, userGroupInformation);
     final AbfsConfiguration abfsConfiguration = abfsStore.getAbfsConfiguration();
 
     this.setWorkingDirectory(this.getHomeDirectory());
@@ -132,6 +137,10 @@ public class AzureBlobFileSystem extends FileSystem {
     }
 
     AbfsClientThrottlingIntercept.initializeSingleton(abfsConfiguration.isAutoThrottlingEnabled());
+
+    // Initialize ABFS authorizer
+    //
+    this.authorizer = abfsConfiguration.getAbfsAuthorizer();
   }
 
   @Override
@@ -145,7 +154,7 @@ public class AzureBlobFileSystem extends FileSystem {
     return sb.toString();
   }
 
-  public boolean isSecure() {
+  public boolean isSecureScheme() {
     return false;
   }
 
@@ -158,8 +167,11 @@ public class AzureBlobFileSystem extends FileSystem {
   public FSDataInputStream open(final Path path, final int bufferSize) throws IOException {
     LOG.debug("AzureBlobFileSystem.open path: {} bufferSize: {}", path, bufferSize);
 
+    Path qualifiedPath = makeQualified(path);
+    performAbfsAuthCheck(FsAction.READ, qualifiedPath);
+
     try {
-      InputStream inputStream = abfsStore.openFileForRead(makeQualified(path), statistics);
+      InputStream inputStream = abfsStore.openFileForRead(qualifiedPath, statistics);
       return new FSDataInputStream(inputStream);
     } catch(AzureBlobFileSystemException ex) {
       checkException(path, ex);
@@ -176,8 +188,11 @@ public class AzureBlobFileSystem extends FileSystem {
         overwrite,
         blockSize);
 
+    Path qualifiedPath = makeQualified(f);
+    performAbfsAuthCheck(FsAction.WRITE, qualifiedPath);
+
     try {
-      OutputStream outputStream = abfsStore.createFile(makeQualified(f), overwrite,
+      OutputStream outputStream = abfsStore.createFile(qualifiedPath, overwrite,
           permission == null ? FsPermission.getFileDefault() : permission, FsPermission.getUMask(getConf()));
       return new FSDataOutputStream(outputStream, statistics);
     } catch(AzureBlobFileSystemException ex) {
@@ -236,8 +251,11 @@ public class AzureBlobFileSystem extends FileSystem {
         f.toString(),
         bufferSize);
 
+    Path qualifiedPath = makeQualified(f);
+    performAbfsAuthCheck(FsAction.WRITE, qualifiedPath);
+
     try {
-      OutputStream outputStream = abfsStore.openFileForWrite(makeQualified(f), false);
+      OutputStream outputStream = abfsStore.openFileForWrite(qualifiedPath, false);
       return new FSDataOutputStream(outputStream, statistics);
     } catch(AzureBlobFileSystemException ex) {
       checkException(f, ex);
@@ -267,7 +285,11 @@ public class AzureBlobFileSystem extends FileSystem {
         adjustedDst = new Path(dst, sourceFileName);
       }
 
-      abfsStore.rename(makeQualified(src), makeQualified(adjustedDst));
+      Path qualifiedSrcPath = makeQualified(src);
+      Path qualifiedDstPath = makeQualified(adjustedDst);
+      performAbfsAuthCheck(FsAction.READ_WRITE, qualifiedSrcPath, qualifiedDstPath);
+
+      abfsStore.rename(qualifiedSrcPath, qualifiedDstPath);
       return true;
     } catch(AzureBlobFileSystemException ex) {
       checkException(
@@ -289,6 +311,9 @@ public class AzureBlobFileSystem extends FileSystem {
     LOG.debug(
         "AzureBlobFileSystem.delete path: {} recursive: {}", f.toString(), recursive);
 
+    Path qualifiedPath = makeQualified(f);
+    performAbfsAuthCheck(FsAction.WRITE, qualifiedPath);
+
     if (f.isRoot()) {
       if (!recursive) {
         return false;
@@ -298,7 +323,7 @@ public class AzureBlobFileSystem extends FileSystem {
     }
 
     try {
-      abfsStore.delete(makeQualified(f), recursive);
+      abfsStore.delete(qualifiedPath, recursive);
       return true;
     } catch (AzureBlobFileSystemException ex) {
       checkException(f, ex, AzureServiceErrorCode.PATH_NOT_FOUND);
@@ -312,8 +337,11 @@ public class AzureBlobFileSystem extends FileSystem {
     LOG.debug(
         "AzureBlobFileSystem.listStatus path: {}", f.toString());
 
+    Path qualifiedPath = makeQualified(f);
+    performAbfsAuthCheck(FsAction.READ, qualifiedPath);
+
     try {
-      FileStatus[] result = abfsStore.listStatus(makeQualified(f));
+      FileStatus[] result = abfsStore.listStatus(qualifiedPath);
       return result;
     } catch (AzureBlobFileSystemException ex) {
       checkException(f, ex);
@@ -332,8 +360,11 @@ public class AzureBlobFileSystem extends FileSystem {
       return true;
     }
 
+    Path qualifiedPath = makeQualified(f);
+    performAbfsAuthCheck(FsAction.WRITE, qualifiedPath);
+
     try {
-      abfsStore.createDirectory(makeQualified(f), permission == null ? FsPermission.getDirDefault() : permission,
+      abfsStore.createDirectory(qualifiedPath, permission == null ? FsPermission.getDirDefault() : permission,
           FsPermission.getUMask(getConf()));
       return true;
     } catch (AzureBlobFileSystemException ex) {
@@ -357,8 +388,11 @@ public class AzureBlobFileSystem extends FileSystem {
   public FileStatus getFileStatus(final Path f) throws IOException {
     LOG.debug("AzureBlobFileSystem.getFileStatus path: {}", f);
 
+    Path qualifiedPath = makeQualified(f);
+    performAbfsAuthCheck(FsAction.READ, qualifiedPath);
+
     try {
-      return abfsStore.getFileStatus(makeQualified(f));
+      return abfsStore.getFileStatus(qualifiedPath);
     } catch(AzureBlobFileSystemException ex) {
       checkException(f, ex);
       return null;
@@ -519,7 +553,7 @@ public class AzureBlobFileSystem extends FileSystem {
       throws IOException {
     LOG.debug(
         "AzureBlobFileSystem.setOwner path: {}", path);
-    if (!getIsNamespaceEnabeld()) {
+    if (!getIsNamespaceEnabled()) {
       super.setOwner(path, owner, group);
       return;
     }
@@ -528,8 +562,11 @@ public class AzureBlobFileSystem extends FileSystem {
       throw new IllegalArgumentException("A valid owner or group must be specified.");
     }
 
+    Path qualifiedPath = makeQualified(path);
+    performAbfsAuthCheck(FsAction.WRITE, qualifiedPath);
+
     try {
-      abfsStore.setOwner(makeQualified(path),
+      abfsStore.setOwner(qualifiedPath,
               owner,
               group);
     } catch (AzureBlobFileSystemException ex) {
@@ -547,7 +584,7 @@ public class AzureBlobFileSystem extends FileSystem {
   public void setPermission(final Path path, final FsPermission permission)
       throws IOException {
     LOG.debug("AzureBlobFileSystem.setPermission path: {}", path);
-    if (!getIsNamespaceEnabeld()) {
+    if (!getIsNamespaceEnabled()) {
       super.setPermission(path, permission);
       return;
     }
@@ -556,8 +593,11 @@ public class AzureBlobFileSystem extends FileSystem {
       throw new IllegalArgumentException("The permission can't be null");
     }
 
+    Path qualifiedPath = makeQualified(path);
+    performAbfsAuthCheck(FsAction.WRITE, qualifiedPath);
+
     try {
-      abfsStore.setPermission(makeQualified(path),
+      abfsStore.setPermission(qualifiedPath,
               permission);
     } catch (AzureBlobFileSystemException ex) {
       checkException(path, ex);
@@ -579,7 +619,7 @@ public class AzureBlobFileSystem extends FileSystem {
       throws IOException {
     LOG.debug("AzureBlobFileSystem.modifyAclEntries path: {}", path.toString());
 
-    if (!getIsNamespaceEnabeld()) {
+    if (!getIsNamespaceEnabled()) {
       throw new UnsupportedOperationException(
           "modifyAclEntries is only supported by storage accounts with the "
           + "hierarchical namespace enabled.");
@@ -589,8 +629,11 @@ public class AzureBlobFileSystem extends FileSystem {
       throw new IllegalArgumentException("The value of the aclSpec parameter is invalid.");
     }
 
+    Path qualifiedPath = makeQualified(path);
+    performAbfsAuthCheck(FsAction.WRITE, qualifiedPath);
+
     try {
-      abfsStore.modifyAclEntries(makeQualified(path),
+      abfsStore.modifyAclEntries(qualifiedPath,
               aclSpec);
     } catch (AzureBlobFileSystemException ex) {
       checkException(path, ex);
@@ -610,7 +653,7 @@ public class AzureBlobFileSystem extends FileSystem {
       throws IOException {
     LOG.debug("AzureBlobFileSystem.removeAclEntries path: {}", path);
 
-    if (!getIsNamespaceEnabeld()) {
+    if (!getIsNamespaceEnabled()) {
       throw new UnsupportedOperationException(
           "removeAclEntries is only supported by storage accounts with the "
           + "hierarchical namespace enabled.");
@@ -620,8 +663,11 @@ public class AzureBlobFileSystem extends FileSystem {
       throw new IllegalArgumentException("The aclSpec argument is invalid.");
     }
 
+    Path qualifiedPath = makeQualified(path);
+    performAbfsAuthCheck(FsAction.WRITE, qualifiedPath);
+
     try {
-      abfsStore.removeAclEntries(makeQualified(path), aclSpec);
+      abfsStore.removeAclEntries(qualifiedPath, aclSpec);
     } catch (AzureBlobFileSystemException ex) {
       checkException(path, ex);
     }
@@ -637,14 +683,17 @@ public class AzureBlobFileSystem extends FileSystem {
   public void removeDefaultAcl(final Path path) throws IOException {
     LOG.debug("AzureBlobFileSystem.removeDefaultAcl path: {}", path);
 
-    if (!getIsNamespaceEnabeld()) {
+    if (!getIsNamespaceEnabled()) {
       throw new UnsupportedOperationException(
           "removeDefaultAcl is only supported by storage accounts with the "
           + "hierarchical namespace enabled.");
     }
 
+    Path qualifiedPath = makeQualified(path);
+    performAbfsAuthCheck(FsAction.WRITE, qualifiedPath);
+
     try {
-      abfsStore.removeDefaultAcl(makeQualified(path));
+      abfsStore.removeDefaultAcl(qualifiedPath);
     } catch (AzureBlobFileSystemException ex) {
       checkException(path, ex);
     }
@@ -662,14 +711,17 @@ public class AzureBlobFileSystem extends FileSystem {
   public void removeAcl(final Path path) throws IOException {
     LOG.debug("AzureBlobFileSystem.removeAcl path: {}", path);
 
-    if (!getIsNamespaceEnabeld()) {
+    if (!getIsNamespaceEnabled()) {
       throw new UnsupportedOperationException(
           "removeAcl is only supported by storage accounts with the "
           + "hierarchical namespace enabled.");
     }
 
+    Path qualifiedPath = makeQualified(path);
+    performAbfsAuthCheck(FsAction.WRITE, qualifiedPath);
+
     try {
-      abfsStore.removeAcl(makeQualified(path));
+      abfsStore.removeAcl(qualifiedPath);
     } catch (AzureBlobFileSystemException ex) {
       checkException(path, ex);
     }
@@ -690,7 +742,7 @@ public class AzureBlobFileSystem extends FileSystem {
       throws IOException {
     LOG.debug("AzureBlobFileSystem.setAcl path: {}", path);
 
-    if (!getIsNamespaceEnabeld()) {
+    if (!getIsNamespaceEnabled()) {
       throw new UnsupportedOperationException(
           "setAcl is only supported by storage accounts with the hierarchical "
           + "namespace enabled.");
@@ -700,8 +752,11 @@ public class AzureBlobFileSystem extends FileSystem {
       throw new IllegalArgumentException("The aclSpec argument is invalid.");
     }
 
+    Path qualifiedPath = makeQualified(path);
+    performAbfsAuthCheck(FsAction.WRITE, qualifiedPath);
+
     try {
-      abfsStore.setAcl(makeQualified(path), aclSpec);
+      abfsStore.setAcl(qualifiedPath, aclSpec);
     } catch (AzureBlobFileSystemException ex) {
       checkException(path, ex);
     }
@@ -718,14 +773,17 @@ public class AzureBlobFileSystem extends FileSystem {
   public AclStatus getAclStatus(final Path path) throws IOException {
     LOG.debug("AzureBlobFileSystem.getAclStatus path: {}", path.toString());
 
-    if (!getIsNamespaceEnabeld()) {
+    if (!getIsNamespaceEnabled()) {
       throw new UnsupportedOperationException(
           "getAclStatus is only supported by storage account with the "
           + "hierarchical namespace enabled.");
     }
 
+    Path qualifiedPath = makeQualified(path);
+    performAbfsAuthCheck(FsAction.READ, qualifiedPath);
+
     try {
-      return abfsStore.getAclStatus(makeQualified(path));
+      return abfsStore.getAclStatus(qualifiedPath);
     } catch (AzureBlobFileSystemException ex) {
       checkException(path, ex);
       return null;
@@ -947,7 +1005,33 @@ public class AzureBlobFileSystem extends FileSystem {
   }
 
   @VisibleForTesting
-  boolean getIsNamespaceEnabeld() throws AzureBlobFileSystemException {
+  boolean getIsNamespaceEnabled() throws AzureBlobFileSystemException {
     return abfsStore.getIsNamespaceEnabled();
+  }
+
+  /**
+   * Use ABFS authorizer to check if user is authorized to perform specific
+   * {@link FsAction} on specified {@link Path}s.
+   *
+   * @param action The {@link FsAction} being requested on the provided {@link Path}s.
+   * @param paths The absolute paths of the storage being accessed.
+   * @throws AbfsAuthorizationException on authorization failure.
+   * @throws IOException network problems or similar.
+   * @throws IllegalArgumentException if the required parameters are not provided.
+   */
+  private void performAbfsAuthCheck(FsAction action, Path... paths)
+      throws AbfsAuthorizationException, IOException {
+    if (authorizer == null) {
+      LOG.debug("ABFS authorizer is not initialized. No authorization check will be performed.");
+    } else {
+      Preconditions.checkArgument(paths.length > 0, "no paths supplied for authorization check");
+
+      LOG.debug("Auth check for action: {} on paths: {}", action.toString(), Arrays.toString(paths));
+      if (!authorizer.isAuthorized(action, paths)) {
+        throw new AbfsAuthorizationException(
+            "User is not authorized for action " + action.toString()
+            + " on paths: " + Arrays.toString(paths));
+      }
+    }
   }
 }
