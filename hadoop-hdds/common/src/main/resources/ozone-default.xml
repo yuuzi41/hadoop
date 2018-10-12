@@ -136,6 +136,14 @@
     </description>
   </property>
   <property>
+    <name>dfs.container.ratis.num.container.op.executors</name>
+    <value>10</value>
+    <tag>OZONE, RATIS, PERFORMANCE</tag>
+    <description>Number of executors that will be used by Ratis to execute
+      container ops.(10 by default).
+    </description>
+  </property>
+  <property>
     <name>dfs.container.ratis.segment.size</name>
     <value>1073741824</value>
     <tag>OZONE, RATIS, PERFORMANCE</tag>
@@ -506,7 +514,7 @@
 
   <property>
     <name>ozone.metastore.rocksdb.statistics</name>
-    <value>ALL</value>
+    <value>OFF</value>
     <tag>OZONE, OM, SCM, STORAGE, PERFORMANCE</tag>
     <description>
       The statistics level of the rocksdb store. If you use any value from
@@ -1106,27 +1114,6 @@
   </property>
 
   <property>
-    <name>hdds.write.lock.reporting.threshold.ms</name>
-    <value>5000</value>
-    <tag>OZONE, DATANODE, MANAGEMENT</tag>
-    <description>
-      When a write lock is held for a long time, this will be logged as the
-      lock is released. This sets how long the lock must be held for logging
-      to occur.
-    </description>
-  </property>
-
-  <property>
-    <name>hdds.lock.suppress.warning.interval.ms</name>
-    <value>10000</value>
-    <tag>OZONE, DATANODE, MANAGEMENT</tag>
-    <description>
-      Instrumentation reporting long critical sections will suppress
-      consecutive warnings within this interval.
-    </description>
-  </property>
-
-  <property>
     <name>hdds.command.status.report.interval</name>
     <value>30s</value>
     <tag>OZONE, DATANODE, MANAGEMENT</tag>
@@ -1205,8 +1192,8 @@
 
   <property>
     <name>hdds.db.profile</name>
-    <value>SSD</value>
-    <tag>OZONE, OM, PERFORMANCE, REQUIRED</tag>
+    <value>DISK</value>
+    <tag>OZONE, OM, PERFORMANCE</tag>
     <description>This property allows user to pick a configuration
     that tunes the RocksDB settings for the hardware it is running
     on. Right now, we have SSD and DISK as profile options.</description>

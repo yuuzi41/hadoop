@@ -18,7 +18,9 @@
 
 package org.apache.hadoop.hdds.scm.storage;
 
-import org.apache.ratis.shaded.com.google.protobuf.ByteString;
+
+import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
+import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.hadoop.hdds.scm.XceiverClientManager;
 import org.apache.hadoop.hdds.scm.XceiverClientSpi;
@@ -65,6 +67,7 @@ public class ChunkOutputStream extends OutputStream {
   private final String streamId;
   private int chunkIndex;
   private int chunkSize;
+  private long blockCommitSequenceId;
 
   /**
    * Creates a new ChunkOutputStream.
@@ -93,10 +96,15 @@ public class ChunkOutputStream extends OutputStream {
     this.buffer = ByteBuffer.allocate(chunkSize);
     this.streamId = UUID.randomUUID().toString();
     this.chunkIndex = 0;
+    blockCommitSequenceId = 0;
   }
 
   public ByteBuffer getBuffer() {
     return buffer;
+  }
+
+  public long getBlockCommitSequenceId() {
+    return blockCommitSequenceId;
   }
 
   @Override
@@ -155,7 +163,10 @@ public class ChunkOutputStream extends OutputStream {
         writeChunkToContainer();
       }
       try {
-        putBlock(xceiverClient, containerBlockData.build(), traceID);
+        ContainerProtos.PutBlockResponseProto responseProto =
+            putBlock(xceiverClient, containerBlockData.build(), traceID);
+        blockCommitSequenceId =
+            responseProto.getCommittedBlockLength().getBlockCommitSequenceId();
       } catch (IOException e) {
         throw new IOException(
             "Unexpected Storage Container Exception: " + e.toString(), e);

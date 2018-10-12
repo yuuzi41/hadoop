@@ -96,12 +96,14 @@
     <guice.version>4.0</guice.version>
     <joda-time.version>2.9.9</joda-time.version>
 
+    <bouncycastle.version>1.60</bouncycastle.version>
+
     <!-- Required for testing LDAP integration -->
     <apacheds.version>2.0.0-M21</apacheds.version>
     <ldap-api.version>1.0.0-M33</ldap-api.version>
 
     <!-- Apache Ratis version -->
-    <ratis.version>0.3.0-eca3531-SNAPSHOT</ratis.version>
+    <ratis.version>0.3.0-9b2d7b6-SNAPSHOT</ratis.version>
     <jcache.version>1.0-alpha-1</jcache.version>
     <ehcache.version>3.3.1</ehcache.version>
     <hikari.version>2.4.12</hikari.version>
@@ -804,6 +806,21 @@
         <version>${jetty.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.eclipse.jetty.websocket</groupId>
+        <artifactId>javax-websocket-server-impl</artifactId>
+        <version>${jetty.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-webapp</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
         <groupId>javax.servlet.jsp</groupId>
         <artifactId>jsp-api</artifactId>
         <version>2.1</version>
@@ -1409,10 +1426,14 @@
      </dependency>
      <dependency>
        <groupId>org.bouncycastle</groupId>
-       <artifactId>bcprov-jdk16</artifactId>
-       <version>1.46</version>
-       <scope>test</scope>
+       <artifactId>bcprov-jdk15on</artifactId>
+       <version>${bouncycastle.version}</version>
      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcpkix-jdk15on</artifactId>
+        <version>${bouncycastle.version}</version>
+      </dependency>
 
      <dependency>
         <groupId>joda-time</groupId>
@@ -1570,6 +1591,11 @@
         <groupId>org.jruby.jcodings</groupId>
         <artifactId>jcodings</artifactId>
         <version>1.0.13</version>
+      </dependency>
+      <dependency>
+        <groupId>javax.activation</groupId>
+        <artifactId>javax.activation-api</artifactId>
+        <version>1.2.0</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

@@ -20,7 +20,7 @@ package org.apache.hadoop.hdds.scm.storage;
 
 import org.apache.hadoop.hdds.scm.container.common.helpers
     .BlockNotCommittedException;
-import org.apache.ratis.shaded.com.google.protobuf.ByteString;
+import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.hadoop.hdds.scm.XceiverClientSpi;
 import org.apache.hadoop.hdds.scm.container.common.helpers
     .StorageContainerException;
@@ -141,24 +141,23 @@ public final class ContainerProtocolCalls  {
    * @param xceiverClient client to perform call
    * @param containerBlockData block data to identify container
    * @param traceID container protocol call args
+   * @return putBlockResponse
    * @throws IOException if there is an I/O error while performing the call
    */
-  public static void putBlock(XceiverClientSpi xceiverClient,
-      BlockData containerBlockData, String traceID) throws IOException {
-    PutBlockRequestProto.Builder createBlockRequest = PutBlockRequestProto
-        .newBuilder()
-        .setBlockData(containerBlockData);
+  public static ContainerProtos.PutBlockResponseProto putBlock(
+      XceiverClientSpi xceiverClient, BlockData containerBlockData,
+      String traceID) throws IOException {
+    PutBlockRequestProto.Builder createBlockRequest =
+        PutBlockRequestProto.newBuilder().setBlockData(containerBlockData);
     String id = xceiverClient.getPipeline().getLeader().getUuidString();
-    ContainerCommandRequestProto request = ContainerCommandRequestProto
-        .newBuilder()
-        .setCmdType(Type.PutBlock)
-        .setContainerID(containerBlockData.getBlockID().getContainerID())
-        .setTraceID(traceID)
-        .setDatanodeUuid(id)
-        .setPutBlock(createBlockRequest)
-        .build();
+    ContainerCommandRequestProto request =
+        ContainerCommandRequestProto.newBuilder().setCmdType(Type.PutBlock)
+            .setContainerID(containerBlockData.getBlockID().getContainerID())
+            .setTraceID(traceID).setDatanodeUuid(id)
+            .setPutBlock(createBlockRequest).build();
     ContainerCommandResponseProto response = xceiverClient.sendCommand(request);
     validateContainerResponse(response);
+    return response.getPutBlock();
   }
 
   /**

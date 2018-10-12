@@ -56,9 +56,9 @@ import org.apache.ratis.rpc.RpcType;
 import org.apache.ratis.rpc.SupportedRpcType;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
-import org.apache.ratis.shaded.proto.RaftProtos;
-import org.apache.ratis.shaded.proto.RaftProtos.RoleInfoProto;
-import org.apache.ratis.shaded.proto.RaftProtos.ReplicationLevel;
+import org.apache.ratis.proto.RaftProtos;
+import org.apache.ratis.proto.RaftProtos.RoleInfoProto;
+import org.apache.ratis.proto.RaftProtos.ReplicationLevel;
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
@@ -70,6 +70,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -97,6 +98,7 @@ public final class XceiverServerRatis implements XceiverServerSpi {
   private final StateContext context;
   private final ReplicationLevel replicationLevel;
   private long nodeFailureTimeoutMs;
+  private ContainerStateMachine stateMachine;
 
   private XceiverServerRatis(DatanodeDetails dd, int port,
       ContainerDispatcher dispatcher, Configuration conf, StateContext context)
@@ -112,12 +114,15 @@ public final class XceiverServerRatis implements XceiverServerSpi {
             100, TimeUnit.SECONDS,
             new ArrayBlockingQueue<>(1024),
             new ThreadPoolExecutor.CallerRunsPolicy());
+    final int numContainerOpExecutors = conf.getInt(
+        OzoneConfigKeys.DFS_CONTAINER_RATIS_NUM_CONTAINER_OP_EXECUTORS_KEY,
+        OzoneConfigKeys.DFS_CONTAINER_RATIS_NUM_CONTAINER_OP_EXECUTORS_DEFAULT);
     this.context = context;
     this.replicationLevel =
         conf.getEnum(OzoneConfigKeys.DFS_CONTAINER_RATIS_REPLICATION_LEVEL_KEY,
             OzoneConfigKeys.DFS_CONTAINER_RATIS_REPLICATION_LEVEL_DEFAULT);
-    ContainerStateMachine stateMachine =
-        new ContainerStateMachine(dispatcher, chunkExecutor, this);
+    stateMachine = new ContainerStateMachine(dispatcher, chunkExecutor, this,
+        numContainerOpExecutors);
     this.server = RaftServer.newBuilder()
         .setServerId(RatisHelper.toRaftPeerId(dd))
         .setProperties(serverProperties)
@@ -236,7 +241,8 @@ public final class XceiverServerRatis implements XceiverServerSpi {
 
     // Set the ratis storage directory
     String storageDir = HddsServerUtil.getOzoneDatanodeRatisDirectory(conf);
-    RaftServerConfigKeys.setStorageDir(properties, new File(storageDir));
+    RaftServerConfigKeys.setStorageDirs(properties,
+        Collections.singletonList(new File(storageDir)));
 
     // For grpc set the maximum message size
     GrpcConfigKeys.setMessageSizeMax(properties,
@@ -292,6 +298,7 @@ public final class XceiverServerRatis implements XceiverServerSpi {
   public void stop() {
     try {
       chunkExecutor.shutdown();
+      stateMachine.close();
       server.close();
     } catch (IOException e) {
       throw new RuntimeException(e);

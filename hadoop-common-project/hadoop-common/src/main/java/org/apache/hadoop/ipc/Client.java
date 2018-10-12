@@ -1370,7 +1370,7 @@ public class Client implements AutoCloseable {
    * @param remoteId - the target rpc server
    * @param fallbackToSimpleAuth - set to true or false during this method to
    *   indicate if a secure client falls back to simple auth
-   * @returns the rpc response
+   * @return the rpc response
    * Throws exceptions if there are network problems or if the remote code
    * threw an exception.
    */
@@ -1422,7 +1422,7 @@ public class Client implements AutoCloseable {
    * @param fallbackToSimpleAuth - set to true or false during this method to
    *   indicate if a secure client falls back to simple auth
    * @param alignmentContext - state alignment context
-   * @returns the rpc response
+   * @return the rpc response
    * Throws exceptions if there are network problems or if the remote code
    * threw an exception.
    */
@@ -1493,7 +1493,7 @@ public class Client implements AutoCloseable {
   /**
    * Check if RPC is in asynchronous mode or not.
    *
-   * @returns true, if RPC is in asynchronous mode, otherwise false for
+   * @return true, if RPC is in asynchronous mode, otherwise false for
    *          synchronous mode.
    */
   @Unstable
@@ -1607,7 +1607,8 @@ public class Client implements AutoCloseable {
   
   /**
    * This class holds the address and the user ticket. The client connections
-   * to servers are uniquely identified by <remoteAddress, protocol, ticket>
+   * to servers are uniquely identified by {@literal <}remoteAddress, protocol,
+   * ticket{@literal >}
    */
   @InterfaceAudience.LimitedPrivate({"HDFS", "MapReduce"})
   @InterfaceStability.Evolving
