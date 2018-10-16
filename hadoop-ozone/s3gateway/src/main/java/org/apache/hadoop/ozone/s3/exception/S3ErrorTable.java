@@ -35,6 +35,9 @@ public final class S3ErrorTable {
   public static final OS3Exception INVALID_URI = new OS3Exception("InvalidURI",
       "Couldn't parse the specified URI.", HTTP_BAD_REQUEST);
 
+  public static final OS3Exception NO_SUCH_VOLUME = new OS3Exception(
+      "NoSuchVolume", "The specified volume does not exist", HTTP_NOT_FOUND);
+
   public static final OS3Exception NO_SUCH_BUCKET = new OS3Exception(
       "NoSuchBucket", "The specified bucket does not exist", HTTP_NOT_FOUND);
 
@@ -44,6 +47,11 @@ public final class S3ErrorTable {
 
   public static final OS3Exception NO_SUCH_OBJECT = new OS3Exception(
       "NoSuchObject", "The specified object does not exist", HTTP_NOT_FOUND);
+
+
+  public static final OS3Exception MALFORMED_HEADER = new OS3Exception(
+      "AuthorizationHeaderMalformed", "The authorization header you provided " +
+      "is invalid.", HTTP_NOT_FOUND);
 
   /**
    * Create a new instance of Error.
@@ -63,7 +71,9 @@ public final class S3ErrorTable {
    */
   public enum Resource {
     BUCKET("Bucket"),
-    OBJECT("Object");
+    OBJECT("Object"),
+    HEADER("header"),
+    VOLUME("Volume");
 
     private final String resource;
 

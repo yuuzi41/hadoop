@@ -111,7 +111,11 @@ public class ChunkGroupInputStream extends InputStream implements Seekable {
     }
     int totalReadLen = 0;
     while (len > 0) {
-      if (streamEntries.size() <= currentStreamIndex) {
+      // if we are at the last block and have read the entire block, return
+      if (streamEntries.size() == 0 ||
+              (streamEntries.size() - 1 <= currentStreamIndex &&
+                      streamEntries.get(currentStreamIndex)
+                              .getRemaining() == 0)) {
         return totalReadLen == 0 ? EOF : totalReadLen;
       }
       ChunkInputStreamEntry current = streamEntries.get(currentStreamIndex);
@@ -273,7 +277,7 @@ public class ChunkGroupInputStream extends InputStream implements Seekable {
       ContainerWithPipeline containerWithPipeline =
           storageContainerLocationClient.getContainerWithPipeline(containerID);
       XceiverClientSpi xceiverClient = xceiverClientManager
-          .acquireClient(containerWithPipeline.getPipeline(), containerID);
+          .acquireClient(containerWithPipeline.getPipeline());
       boolean success = false;
       containerKey = omKeyLocationInfo.getLocalID();
       try {

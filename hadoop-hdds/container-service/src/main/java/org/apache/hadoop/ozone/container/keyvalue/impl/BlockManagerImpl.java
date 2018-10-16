@@ -25,12 +25,16 @@ import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
 
+import org.apache.hadoop.hdfs.DFSUtil;
+import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.container.common.helpers.BlockData;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
 import org.apache.hadoop.ozone.container.keyvalue.helpers.BlockUtils;
 import org.apache.hadoop.ozone.container.common.interfaces.Container;
 import org.apache.hadoop.ozone.container.keyvalue.interfaces.BlockManager;
 import org.apache.hadoop.ozone.container.common.utils.ContainerCache;
+import org.apache.hadoop.utils.BatchOperation;
+import org.apache.hadoop.utils.MetadataKeyFilters;
 import org.apache.hadoop.utils.MetadataStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +53,8 @@ import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Res
 public class BlockManagerImpl implements BlockManager {
 
   static final Logger LOG = LoggerFactory.getLogger(BlockManagerImpl.class);
+  private static byte[] blockCommitSequenceIdKey =
+          DFSUtil.string2Bytes(OzoneConsts.BLOCK_COMMIT_SEQUENCE_ID_PREFIX);
 
   private Configuration config;
 
@@ -83,8 +89,36 @@ public class BlockManagerImpl implements BlockManager {
     // This is a post condition that acts as a hint to the user.
     // Should never fail.
     Preconditions.checkNotNull(db, "DB cannot be null here");
-    db.put(Longs.toByteArray(data.getLocalID()), data.getProtoBufMessage()
-        .toByteArray());
+
+    long blockCommitSequenceId = data.getBlockCommitSequenceId();
+    byte[] blockCommitSequenceIdValue = db.get(blockCommitSequenceIdKey);
+
+    // default blockCommitSequenceId for any block is 0. It the putBlock
+    // request is not coming via Ratis(for test scenarios), it will be 0.
+    // In such cases, we should overwrite the block as well
+    if (blockCommitSequenceIdValue != null && blockCommitSequenceId != 0) {
+      if (blockCommitSequenceId <= Longs
+          .fromByteArray(blockCommitSequenceIdValue)) {
+        // Since the blockCommitSequenceId stored in the db is greater than
+        // equal to blockCommitSequenceId to be updated, it means the putBlock
+        // transaction is reapplied in the ContainerStateMachine on restart.
+        // It also implies that the given block must already exist in the db.
+        // just log and return
+        LOG.warn("blockCommitSequenceId " + Longs
+            .fromByteArray(blockCommitSequenceIdValue)
+            + " in the Container Db is greater than" + " the supplied value "
+            + blockCommitSequenceId + " .Ignoring it");
+        return data.getSize();
+      }
+    }
+    // update the blockData as well as BlockCommitSequenceId here
+    BatchOperation batch = new BatchOperation();
+    batch.put(Longs.toByteArray(data.getLocalID()),
+        data.getProtoBufMessage().toByteArray());
+    batch.put(blockCommitSequenceIdKey,
+        Longs.toByteArray(blockCommitSequenceId));
+    db.writeBatch(batch);
+    container.updateBlockCommitSequenceId(blockCommitSequenceId);
     // Increment keycount here
     container.getContainerData().incrKeyCount();
     return data.getSize();
@@ -208,8 +242,9 @@ public class BlockManagerImpl implements BlockManager {
     MetadataStore db = BlockUtils.getDB(cData, config);
     result = new ArrayList<>();
     byte[] startKeyInBytes = Longs.toByteArray(startLocalID);
-    List<Map.Entry<byte[], byte[]>> range = db.getSequentialRangeKVs(
-        startKeyInBytes, count, null);
+    List<Map.Entry<byte[], byte[]>> range =
+        db.getSequentialRangeKVs(startKeyInBytes, count,
+            MetadataKeyFilters.getNormalKeyFilter());
     for (Map.Entry<byte[], byte[]> entry : range) {
       BlockData value = BlockUtils.getBlockData(entry.getValue());
       BlockData data = new BlockData(value.getBlockID());

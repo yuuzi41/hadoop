@@ -18,7 +18,7 @@
 
 package org.apache.hadoop.ozone.client.protocol;
 
-import org.apache.hadoop.fs.StorageType;
+import org.apache.hadoop.hdds.protocol.StorageType;
 import org.apache.hadoop.ozone.OzoneAcl;
 import org.apache.hadoop.ozone.client.*;
 import org.apache.hadoop.hdds.client.OzoneQuota;
@@ -329,6 +329,14 @@ public interface ClientProtocol {
    * @throws IOException - On failure, throws an exception like Bucket exists.
    */
   void createS3Bucket(String userName, String s3BucketName) throws IOException;
+
+  /**
+   * Deletes an s3 bucket and removes mapping of Ozone volume/bucket.
+   * @param bucketName - S3 Bucket Name.
+   * @throws  IOException in case the bucket cannot be deleted.
+   */
+  void deleteS3Bucket(String bucketName) throws IOException;
+
 
   /**
    * Returns the Ozone Namespace for the S3Bucket. It will return the

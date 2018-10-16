@@ -79,22 +79,7 @@ import com.google.common.base.Preconditions;
 import com.google.protobuf.ByteString;
 import static org.apache.hadoop.hdds.HddsConfigKeys
     .HDDS_DATANODE_VOLUME_CHOOSING_POLICY;
-import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
-    .Result.BLOCK_NOT_COMMITTED;
-import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
-    .Result.CLOSED_CONTAINER_IO;
-import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
-    .Result.CONTAINER_INTERNAL_ERROR;
-import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
-    .Result.DELETE_ON_OPEN_CONTAINER;
-import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
-    .Result.GET_SMALL_FILE_ERROR;
-import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
-    .Result.INVALID_CONTAINER_STATE;
-import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
-    .Result.IO_EXCEPTION;
-import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
-    .Result.PUT_SMALL_FILE_ERROR;
+import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result.*;
 import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
     .Stage;
 import static org.apache.hadoop.ozone.OzoneConfigKeys
@@ -256,9 +241,12 @@ public class KeyValueHandler extends Handler {
         newContainer.create(volumeSet, volumeChoosingPolicy, scmID);
         containerSet.addContainer(newContainer);
       } else {
-        throw new StorageContainerException("Container already exists with " +
-            "container Id " + containerID, ContainerProtos.Result
-            .CONTAINER_EXISTS);
+
+        // The create container request for an already existing container can
+        // arrive in case the ContainerStateMachine reapplies the transaction
+        // on datanode restart. Just log a warning msg here.
+        LOG.warn("Container already exists." +
+            "container Id " + containerID);
       }
     } catch (StorageContainerException ex) {
       return ContainerUtils.logAndReturnError(LOG, ex, request);
@@ -385,6 +373,7 @@ public class KeyValueHandler extends Handler {
 
   /**
    * Handles Close Container Request. An open container is closed.
+   * Close Container call is idempotent.
    */
   ContainerCommandResponseProto handleCloseContainer(
       ContainerCommandRequestProto request, KeyValueContainer kvContainer) {
@@ -818,6 +807,9 @@ public class KeyValueHandler extends Handler {
       case CLOSING:
       case CLOSED:
         result = CLOSED_CONTAINER_IO;
+        break;
+      case UNHEALTHY:
+        result = CONTAINER_UNHEALTHY;
         break;
       case INVALID:
         result = INVALID_CONTAINER_STATE;
