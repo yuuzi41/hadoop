@@ -370,7 +370,7 @@ public class KeyManagerImpl implements KeyManager {
       }
       return OmKeyInfo.getFromProtobuf(KeyInfo.parseFrom(value));
     } catch (IOException ex) {
-      LOG.error("Get key failed for volume:{} bucket:{} key:{}",
+      LOG.debug("Get key failed for volume:{} bucket:{} key:{}",
           volumeName, bucketName, keyName, ex);
       throw new OMException(ex.getMessage(),
           OMException.ResultCodes.FAILED_KEY_NOT_FOUND);
@@ -411,10 +411,6 @@ public class KeyManagerImpl implements KeyManager {
 
       // A rename is a no-op if the target and source name is same.
       // TODO: Discuss if we need to throw?.
-      // TODO: Define the semantics of rename more clearly. Today this code
-      // will allow rename of a Key across volumes. This should *not* be
-      // allowed. The documentation of Ozone says that rename is permitted only
-      // within a volume.
       if (fromKeyName.equals(toKeyName)) {
         return;
       }

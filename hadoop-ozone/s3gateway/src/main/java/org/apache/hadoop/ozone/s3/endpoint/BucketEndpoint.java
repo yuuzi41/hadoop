@@ -21,21 +21,30 @@ import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.HEAD;
+import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.Iterator;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response.ResponseBuilder;
 
 import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneKey;
 import org.apache.hadoop.ozone.s3.commontypes.KeyMetadata;
+import org.apache.hadoop.ozone.s3.endpoint.MultiDeleteRequest.DeleteObject;
+import org.apache.hadoop.ozone.s3.endpoint.MultiDeleteResponse.DeletedObject;
+import org.apache.hadoop.ozone.s3.endpoint.MultiDeleteResponse.Error;
 import org.apache.hadoop.ozone.s3.exception.OS3Exception;
 import org.apache.hadoop.ozone.s3.exception.S3ErrorTable;
 
@@ -60,14 +69,24 @@ public class BucketEndpoint extends EndpointBase {
    * for more details.
    */
   @GET
-  public ListObjectResponse list(
+  public Response list(
       @PathParam("bucket") String bucketName,
       @QueryParam("delimiter") String delimiter,
       @QueryParam("encoding-type") String encodingType,
       @QueryParam("marker") String marker,
       @DefaultValue("1000") @QueryParam("max-keys") int maxKeys,
       @QueryParam("prefix") String prefix,
+      @QueryParam("browser") String browser,
       @Context HttpHeaders hh) throws OS3Exception, IOException {
+
+    if (browser != null) {
+      try (InputStream browserPage = getClass()
+          .getResourceAsStream("/browser.html")) {
+        return Response.ok(browserPage,
+            MediaType.TEXT_HTML_TYPE)
+            .build();
+      }
+    }
 
     if (delimiter == null) {
       delimiter = "/";
@@ -125,7 +144,7 @@ public class BucketEndpoint extends EndpointBase {
     }
     response.setKeyCount(
         response.getCommonPrefixes().size() + response.getContents().size());
-    return response;
+    return Response.ok(response).build();
   }
 
   @PUT
@@ -180,11 +199,11 @@ public class BucketEndpoint extends EndpointBase {
     } catch (IOException ex) {
       if (ex.getMessage().contains("BUCKET_NOT_EMPTY")) {
         OS3Exception os3Exception = S3ErrorTable.newError(S3ErrorTable
-            .BUCKET_NOT_EMPTY, S3ErrorTable.Resource.BUCKET);
+            .BUCKET_NOT_EMPTY, bucketName);
         throw os3Exception;
       } else if (ex.getMessage().contains("BUCKET_NOT_FOUND")) {
         OS3Exception os3Exception = S3ErrorTable.newError(S3ErrorTable
-            .NO_SUCH_BUCKET, S3ErrorTable.Resource.BUCKET);
+            .NO_SUCH_BUCKET, bucketName);
         throw os3Exception;
       } else {
         throw ex;
@@ -194,6 +213,50 @@ public class BucketEndpoint extends EndpointBase {
     return Response
         .status(HttpStatus.SC_NO_CONTENT)
         .build();
+
+  }
+
+  /**
+   * Implement multi delete.
+   * <p>
+   * see: https://docs.aws.amazon
+   * .com/AmazonS3/latest/API/multiobjectdeleteapi.html
+   */
+  @POST
+  @Produces(MediaType.APPLICATION_XML)
+  public Response multiDelete(@PathParam("bucket") String bucketName,
+      @QueryParam("delete") String delete,
+      MultiDeleteRequest request) throws OS3Exception, IOException {
+    OzoneBucket bucket = getBucket(bucketName);
+    MultiDeleteResponse result = new MultiDeleteResponse();
+    if (request.getObjects() != null) {
+      for (DeleteObject keyToDelete : request.getObjects()) {
+        try {
+          bucket.deleteKey(keyToDelete.getKey());
+
+          if (!request.isQuiet()) {
+            result.addDeleted(new DeletedObject(keyToDelete.getKey()));
+          }
+        } catch (IOException ex) {
+          if (!ex.getMessage().contains("KEY_NOT_FOUND")) {
+            result.addError(
+                new Error(keyToDelete.getKey(), "InternalError",
+                    ex.getMessage()));
+          } else if (!request.isQuiet()) {
+            result.addDeleted(new DeletedObject(keyToDelete.getKey()));
+          }
+        } catch (Exception ex) {
+          result.addError(
+              new Error(keyToDelete.getKey(), "InternalError",
+                  ex.getMessage()));
+        }
+      }
+    }
+    ResponseBuilder response = Response.ok();
+    if (!request.isQuiet() || result.getErrors().size() > 0) {
+      response = response.entity(result);
+    }
+    return response.build();
 
   }
 }

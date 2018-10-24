@@ -34,6 +34,10 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -146,7 +150,7 @@ public class ObjectEndpoint extends EndpointBase {
     } catch (IOException ex) {
       if (ex.getMessage().contains("NOT_FOUND")) {
         OS3Exception os3Exception = S3ErrorTable.newError(S3ErrorTable
-            .NO_SUCH_OBJECT, S3ErrorTable.Resource.OBJECT);
+            .NO_SUCH_KEY, keyPath);
         throw os3Exception;
       } else {
         throw ex;
@@ -172,16 +176,20 @@ public class ObjectEndpoint extends EndpointBase {
     } catch (IOException ex) {
       LOG.error("Exception occurred in HeadObject", ex);
       if (ex.getMessage().contains("KEY_NOT_FOUND")) {
-        OS3Exception os3Exception = S3ErrorTable.newError(S3ErrorTable
-            .NO_SUCH_OBJECT, S3ErrorTable.Resource.OBJECT);
-        throw os3Exception;
+        // Just return 404 with no content
+        return Response.status(Status.NOT_FOUND).build();
       } else {
         throw ex;
       }
     }
 
+    ZonedDateTime lastModificationTime =
+        Instant.ofEpochMilli(key.getModificationTime())
+            .atZone(ZoneId.of("GMT"));
+
     return Response.ok().status(HttpStatus.SC_OK)
-        .header("Last-Modified", key.getModificationTime())
+        .header("Last-Modified",
+            DateTimeFormatter.RFC_1123_DATE_TIME.format(lastModificationTime))
         .header("ETag", "" + key.getModificationTime())
         .header("Content-Length", key.getDataSize())
         .header("Content-Type", "binary/octet-stream")
@@ -206,7 +214,7 @@ public class ObjectEndpoint extends EndpointBase {
     } catch (IOException ex) {
       if (ex.getMessage().contains("BUCKET_NOT_FOUND")) {
         throw S3ErrorTable.newError(S3ErrorTable
-            .NO_SUCH_BUCKET, S3ErrorTable.Resource.BUCKET);
+            .NO_SUCH_BUCKET, bucketName);
       } else if (!ex.getMessage().contains("NOT_FOUND")) {
         throw ex;
       }

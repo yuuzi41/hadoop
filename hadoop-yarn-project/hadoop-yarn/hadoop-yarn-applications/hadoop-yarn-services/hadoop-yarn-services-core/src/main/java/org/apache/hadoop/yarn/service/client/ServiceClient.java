@@ -69,6 +69,7 @@ import org.apache.hadoop.yarn.proto.ClientAMProtocol.UpgradeServiceRequestProto;
 import org.apache.hadoop.yarn.proto.ClientAMProtocol.UpgradeServiceResponseProto;
 import org.apache.hadoop.yarn.service.ClientAMProtocol;
 import org.apache.hadoop.yarn.service.ServiceMaster;
+import org.apache.hadoop.yarn.service.api.records.ComponentContainers;
 import org.apache.hadoop.yarn.service.api.records.Container;
 import org.apache.hadoop.yarn.service.api.records.ContainerState;
 import org.apache.hadoop.yarn.service.api.records.Component;
@@ -238,7 +239,22 @@ public class ServiceClient extends AppAdminClient implements SliderExitCodes,
       LOG.error(message);
       throw new YarnException(message);
     }
-
+    boolean foundNotNeverComp = false;
+    for (Component comp : persistedService.getComponents()) {
+      // If restart policy of any component is not NEVER then upgrade is
+      // allowed.
+      if (!comp.getRestartPolicy().equals(Component.RestartPolicyEnum.NEVER)) {
+        foundNotNeverComp = true;
+        break;
+      }
+    }
+    if (!foundNotNeverComp) {
+      String message = "All the components of the service " + service.getName()
+          + " have " + Component.RestartPolicyEnum.NEVER + " restart policy, " +
+          "so it cannot be upgraded.";
+      LOG.error(message);
+      throw new YarnException(message);
+    }
     Service liveService = getStatus(service.getName());
     if (!liveService.getState().equals(ServiceState.STABLE)) {
       String message = service.getName() + " is at " + liveService.getState()
@@ -392,14 +408,15 @@ public class ServiceClient extends AppAdminClient implements SliderExitCodes,
     return result.getCompInstances();
   }
 
-  public Container[] getContainers(String appName, List<String> components,
+  public ComponentContainers[] getContainers(String appName,
+      List<String> components,
       String version, List<ContainerState> containerStates)
       throws IOException, YarnException {
     GetCompInstancesResponseProto result = filterContainers(appName, components,
         version, containerStates != null ? containerStates.stream()
             .map(Enum::toString).collect(Collectors.toList()) : null);
 
-    return ServiceApiUtil.CONTAINER_JSON_SERDE.fromJson(
+    return ServiceApiUtil.COMP_CONTAINERS_JSON_SERDE.fromJson(
         result.getCompInstances());
   }
 
