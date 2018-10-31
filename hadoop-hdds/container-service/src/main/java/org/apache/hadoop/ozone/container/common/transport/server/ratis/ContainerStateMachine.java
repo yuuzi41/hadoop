@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.hdds.HddsUtils;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.ozone.container.common.helpers.BlockData;
+import org.apache.ratis.proto.RaftProtos.StateMachineEntryProto;
 import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.server.RaftServer;
@@ -49,7 +50,7 @@ import org.apache.ratis.server.storage.RaftStorage;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.ratis.proto.RaftProtos.RoleInfoProto;
 import org.apache.ratis.proto.RaftProtos.LogEntryProto;
-import org.apache.ratis.proto.RaftProtos.SMLogEntryProto;
+import org.apache.ratis.proto.RaftProtos.StateMachineLogEntryProto;
 import org.apache.ratis.statemachine.StateMachineStorage;
 import org.apache.ratis.statemachine.TransactionContext;
 import org.apache.ratis.statemachine.impl.BaseStateMachine;
@@ -65,7 +66,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
@@ -111,6 +111,7 @@ public class ContainerStateMachine extends BaseStateMachine {
       LoggerFactory.getLogger(ContainerStateMachine.class);
   private final SimpleStateMachineStorage storage =
       new SimpleStateMachineStorage();
+  private final RaftGroupId gid;
   private final ContainerDispatcher dispatcher;
   private ThreadPoolExecutor chunkExecutor;
   private final XceiverServerRatis ratisServer;
@@ -126,21 +127,19 @@ public class ContainerStateMachine extends BaseStateMachine {
    */
   private final CSMMetrics metrics;
 
-  public ContainerStateMachine(ContainerDispatcher dispatcher,
+  public ContainerStateMachine(RaftGroupId gid, ContainerDispatcher dispatcher,
       ThreadPoolExecutor chunkExecutor, XceiverServerRatis ratisServer,
-      int  numOfExecutors) {
+      List<ExecutorService> executors) {
+    this.gid = gid;
     this.dispatcher = dispatcher;
     this.chunkExecutor = chunkExecutor;
     this.ratisServer = ratisServer;
+    metrics = CSMMetrics.create(gid);
+    this.numExecutors = executors.size();
+    this.executors = executors.toArray(new ExecutorService[numExecutors]);
     this.writeChunkFutureMap = new ConcurrentHashMap<>();
-    metrics = CSMMetrics.create();
     this.createContainerFutureMap = new ConcurrentHashMap<>();
-    this.numExecutors = numOfExecutors;
-    executors = new ExecutorService[numExecutors];
     containerCommandCompletionMap = new ConcurrentHashMap<>();
-    for (int i = 0; i < numExecutors; i++) {
-      executors[i] = Executors.newSingleThreadExecutor();
-    }
   }
 
   @Override
@@ -206,8 +205,8 @@ public class ContainerStateMachine extends BaseStateMachine {
       throws IOException {
     final ContainerCommandRequestProto proto =
         getRequestProto(request.getMessage().getContent());
-
-    final SMLogEntryProto log;
+    Preconditions.checkArgument(request.getRaftGroupId().equals(gid));
+    final StateMachineLogEntryProto log;
     if (proto.getCmdType() == Type.WriteChunk) {
       final WriteChunkRequestProto write = proto.getWriteChunk();
       // create the state machine data proto
@@ -237,21 +236,37 @@ public class ContainerStateMachine extends BaseStateMachine {
               .setWriteChunk(commitWriteChunkProto)
               .build();
 
-      log = SMLogEntryProto.newBuilder()
-          .setData(commitContainerCommandProto.toByteString())
-          .setStateMachineData(dataContainerCommandProto.toByteString())
-          .build();
+      log = createSMLogEntryProto(request,
+          commitContainerCommandProto.toByteString(),
+          dataContainerCommandProto.toByteString());
     } else if (proto.getCmdType() == Type.CreateContainer) {
-      log = SMLogEntryProto.newBuilder()
-          .setData(request.getMessage().getContent())
-          .setStateMachineData(request.getMessage().getContent())
-          .build();
+      log = createSMLogEntryProto(request,
+          request.getMessage().getContent(), request.getMessage().getContent());
     } else {
-      log = SMLogEntryProto.newBuilder()
-          .setData(request.getMessage().getContent())
-          .build();
+      log = createSMLogEntryProto(request, request.getMessage().getContent(),
+          null);
     }
     return new TransactionContextImpl(this, request, log);
+  }
+
+  private StateMachineLogEntryProto createSMLogEntryProto(RaftClientRequest r,
+      ByteString logData, ByteString smData) {
+    StateMachineLogEntryProto.Builder builder =
+        StateMachineLogEntryProto.newBuilder();
+
+    builder.setCallId(r.getCallId())
+        .setClientId(r.getClientId().toByteString())
+        .setLogData(logData);
+
+    if (smData != null) {
+      builder.setStateMachineEntry(StateMachineEntryProto.newBuilder()
+          .setStateMachineData(smData).build());
+    }
+    return builder.build();
+  }
+
+  private ByteString getStateMachineData(StateMachineLogEntryProto entryProto) {
+    return entryProto.getStateMachineEntry().getStateMachineData();
   }
 
   private ContainerCommandRequestProto getRequestProto(ByteString request)
@@ -315,7 +330,7 @@ public class ContainerStateMachine extends BaseStateMachine {
     try {
       metrics.incNumWriteStateMachineOps();
       final ContainerCommandRequestProto requestProto =
-          getRequestProto(entry.getSmLogEntry().getStateMachineData());
+          getRequestProto(getStateMachineData(entry.getStateMachineLogEntry()));
       Type cmdType = requestProto.getCmdType();
       switch (cmdType) {
       case CreateContainer:
@@ -345,8 +360,8 @@ public class ContainerStateMachine extends BaseStateMachine {
     }
   }
 
-  private ByteString readStateMachineData(LogEntryProto entry,
-      ContainerCommandRequestProto requestProto) {
+  private ByteString readStateMachineData(ContainerCommandRequestProto
+                                              requestProto) {
     WriteChunkRequestProto writeChunkRequestProto =
         requestProto.getWriteChunk();
     // Assert that store log entry is for COMMIT_DATA, the WRITE_DATA is
@@ -361,7 +376,8 @@ public class ContainerStateMachine extends BaseStateMachine {
             .setChunkData(writeChunkRequestProto.getChunkData());
     ContainerCommandRequestProto dataContainerCommandProto =
         ContainerCommandRequestProto.newBuilder(requestProto)
-            .setCmdType(Type.ReadChunk).setReadChunk(readChunkRequestProto)
+            .setCmdType(Type.ReadChunk)
+            .setReadChunk(readChunkRequestProto)
             .build();
 
     // read the chunk
@@ -376,7 +392,8 @@ public class ContainerStateMachine extends BaseStateMachine {
     final WriteChunkRequestProto.Builder dataWriteChunkProto =
         WriteChunkRequestProto.newBuilder(writeChunkRequestProto)
             // adding the state machine data
-            .setData(responseProto.getData()).setStage(Stage.WRITE_DATA);
+            .setData(responseProto.getData())
+            .setStage(Stage.WRITE_DATA);
 
     ContainerCommandRequestProto.Builder newStateMachineProto =
         ContainerCommandRequestProto.newBuilder(requestProto)
@@ -410,21 +427,20 @@ public class ContainerStateMachine extends BaseStateMachine {
   @Override
   public CompletableFuture<ByteString> readStateMachineData(
       LogEntryProto entry) {
-    SMLogEntryProto smLogEntryProto = entry.getSmLogEntry();
-    if (!smLogEntryProto.getStateMachineData().isEmpty()) {
+    StateMachineLogEntryProto smLogEntryProto = entry.getStateMachineLogEntry();
+    if (!getStateMachineData(smLogEntryProto).isEmpty()) {
       return CompletableFuture.completedFuture(ByteString.EMPTY);
     }
 
     try {
       final ContainerCommandRequestProto requestProto =
-          getRequestProto(entry.getSmLogEntry().getData());
+          getRequestProto(entry.getStateMachineLogEntry().getLogData());
       // readStateMachineData should only be called for "write" to Ratis.
       Preconditions.checkArgument(!HddsUtils.isReadOnly(requestProto));
 
       if (requestProto.getCmdType() == Type.WriteChunk) {
         return CompletableFuture.supplyAsync(() ->
-                readStateMachineData(entry, requestProto),
-            chunkExecutor);
+                readStateMachineData(requestProto), chunkExecutor);
       } else if (requestProto.getCmdType() == Type.CreateContainer) {
         return CompletableFuture.completedFuture(requestProto.toByteString());
       } else {
@@ -462,7 +478,7 @@ public class ContainerStateMachine extends BaseStateMachine {
     try {
       metrics.incNumApplyTransactionsOps();
       ContainerCommandRequestProto requestProto =
-          getRequestProto(trx.getSMLogEntry().getData());
+          getRequestProto(trx.getStateMachineLogEntry().getLogData());
       Type cmdType = requestProto.getCmdType();
       CompletableFuture<Message> future;
       if (cmdType == Type.PutBlock) {
@@ -490,6 +506,11 @@ public class ContainerStateMachine extends BaseStateMachine {
             .supplyAsync(() -> runCommand(containerCommandRequestProto),
                 getCommandExecutor(requestProto));
       } else {
+        // Make sure that in write chunk, the user data is not set
+        if (cmdType == Type.WriteChunk) {
+          Preconditions.checkArgument(requestProto
+              .getWriteChunk().getData().isEmpty());
+        }
         future = CompletableFuture.supplyAsync(() -> runCommand(requestProto),
             getCommandExecutor(requestProto));
       }
@@ -534,9 +555,5 @@ public class ContainerStateMachine extends BaseStateMachine {
 
   @Override
   public void close() throws IOException {
-    takeSnapshot();
-    for (int i = 0; i < numExecutors; i++) {
-      executors[i].shutdown();
-    }
   }
 }
