@@ -35,6 +35,7 @@ This is similar to Namenode for Ozone.
 */
 
 import "hdds.proto";
+import "Security.proto";
 
 enum Status {
     OK = 1;
@@ -543,6 +544,24 @@ service OzoneManagerService {
     */
     rpc getServiceList(ServiceListRequest)
     returns(ServiceListResponse);
+
+
+    /**
+     Returns delegation token signed by OzoneManager.
+    */
+    rpc getDelegationToken(hadoop.common.GetDelegationTokenRequestProto)
+      returns(hadoop.common.GetDelegationTokenResponseProto);
+
+    /**
+     Renew delegation token signed by OzoneManager.
+    */
+    rpc renewDelegationToken(hadoop.common.RenewDelegationTokenRequestProto)
+    returns(hadoop.common.RenewDelegationTokenResponseProto);
+    /**
+     Cancels a delegation token signed by OzoneManager.
+    */
+    rpc cancelDelegationToken(hadoop.common.CancelDelegationTokenRequestProto)
+    returns(hadoop.common.CancelDelegationTokenResponseProto);
 
     /**
      Creates an S3 bucket and creates an ozone mapping for that bucket.

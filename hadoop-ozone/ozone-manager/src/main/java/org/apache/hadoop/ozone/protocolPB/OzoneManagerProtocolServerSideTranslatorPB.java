@@ -119,6 +119,15 @@ import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos
     .SetVolumePropertyResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos
     .Status;
+import org.apache.hadoop.ozone.security.OzoneTokenIdentifier;
+import org.apache.hadoop.security.proto.SecurityProtos.CancelDelegationTokenRequestProto;
+import org.apache.hadoop.security.proto.SecurityProtos.CancelDelegationTokenResponseProto;
+import org.apache.hadoop.security.proto.SecurityProtos.GetDelegationTokenRequestProto;
+import org.apache.hadoop.security.proto.SecurityProtos.GetDelegationTokenResponseProto;
+import org.apache.hadoop.security.proto.SecurityProtos.RenewDelegationTokenRequestProto;
+import org.apache.hadoop.security.proto.SecurityProtos.RenewDelegationTokenResponseProto;
+import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.io.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -650,5 +659,55 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       resp.setStatus(exceptionToResponseStatus(e));
     }
     return resp.build();
+  }
+
+  @Override
+  public GetDelegationTokenResponseProto getDelegationToken(
+      RpcController controller, GetDelegationTokenRequestProto request)
+      throws ServiceException {
+    try {
+      Token<OzoneTokenIdentifier> token = impl
+          .getDelegationToken(new Text(request.getRenewer()));
+      if (token != null) {
+        return GetDelegationTokenResponseProto.newBuilder()
+            .setToken(OMPBHelper.convertToTokenProto(token)).build();
+      }
+      return GetDelegationTokenResponseProto.getDefaultInstance();
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    }
+  }
+
+  @Override
+  public RenewDelegationTokenResponseProto renewDelegationToken(
+      RpcController controller, RenewDelegationTokenRequestProto request)
+      throws ServiceException {
+    try {
+      if(request.hasToken()) {
+        long expiryTime = impl
+            .renewDelegationToken(
+                OMPBHelper.convertToDelegationToken(request.getToken()));
+        return RenewDelegationTokenResponseProto.newBuilder()
+            .setNewExpiryTime(expiryTime).build();
+      }
+      return RenewDelegationTokenResponseProto.getDefaultInstance();
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    }
+  }
+
+  @Override
+  public CancelDelegationTokenResponseProto cancelDelegationToken(
+      RpcController controller, CancelDelegationTokenRequestProto req)
+      throws ServiceException {
+    try {
+      if(req.hasToken()) {
+        impl.cancelDelegationToken(
+            OMPBHelper.convertToDelegationToken(req.getToken()));
+      }
+      return CancelDelegationTokenResponseProto.getDefaultInstance();
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    }
   }
 }
