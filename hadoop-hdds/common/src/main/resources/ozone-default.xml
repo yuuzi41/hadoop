@@ -53,6 +53,28 @@
     </description>
   </property>
   <property>
+    <name>dfs.container.ratis.statemachinedata.sync.timeout</name>
+    <value>10s</value>
+    <tag>OZONE, DEBUG, CONTAINER, RATIS</tag>
+    <description>Timeout for StateMachine data writes by Ratis.
+    </description>
+  </property>
+  <property>
+    <name>dfs.container.ratis.statemachinedata.sync.retries</name>
+    <value>-1</value>
+    <tag>OZONE, DEBUG, CONTAINER, RATIS</tag>
+    <description>Number of times the WriteStateMachineData op will be tried
+      before failing, if this value is -1, then this retries indefinitely.
+    </description>
+  </property>
+  <property>
+    <name>dfs.container.ratis.log.queue.size</name>
+    <value>128</value>
+    <tag>OZONE, DEBUG, CONTAINER, RATIS</tag>
+    <description>Number of operation pending with Raft's Log Worker.
+    </description>
+  </property>
+  <property>
     <name>dfs.container.ratis.datanode.storage.dir</name>
     <value/>
     <tag>OZONE, CONTAINER, STORAGE, MANAGEMENT, RATIS</tag>
@@ -153,10 +175,10 @@
   </property>
   <property>
     <name>dfs.container.ratis.segment.size</name>
-    <value>1073741824</value>
+    <value>16384</value>
     <tag>OZONE, RATIS, PERFORMANCE</tag>
     <description>The size of the raft segment used by Apache Ratis on datanodes.
-      (1 GB by default)
+      (16 KB by default)
     </description>
   </property>
   <property>
@@ -313,19 +335,29 @@
     </description>
   </property>
   <property>
-    <name>ozone.client.max.retries</name>
-    <value>50</value>
+    <name>ozone.client.stream.buffer.flush.size</name>
+    <value>64</value>
     <tag>OZONE, CLIENT</tag>
-    <description>Maximum number of retries by Ozone Client on encountering
-      exception while fetching committed block length.
+    <description>Size in mb which determines at what buffer position , a partial
+      flush will be initiated during write. It should be ideally a mutiple
+      of chunkSize.
     </description>
   </property>
   <property>
-    <name>ozone.client.retry.interval</name>
-    <value>200ms</value>
+    <name>ozone.client.stream.buffer.max.size</name>
+    <value>128</value>
     <tag>OZONE, CLIENT</tag>
-    <description>Interval between retries by Ozone Client on encountering
-      exception while fetching committed block length.
+    <description>Size in mb which determines at what buffer position ,
+      write call be blocked till acknowledgement of the fisrt partial flush
+      happens by all servers.
+    </description>
+  </property>
+  <property>
+    <name>ozone.client.watch.request.timeout</name>
+    <value>30s</value>
+    <tag>OZONE, CLIENT</tag>
+    <description>Timeout for the watch API in Ratis client to acknowledge
+      a particular request getting replayed to all servers.
     </description>
   </property>
   <property>
@@ -491,21 +523,30 @@
     </description>
   </property>
   <property>
+    <name>ozone.om.db.dirs</name>
+    <value/>
+    <tag>OZONE, OM, STORAGE, PERFORMANCE</tag>
+    <description>
+      Directory where the OzoneManager stores its metadata. This should
+      be specified as a single directory. If the directory does not
+      exist then the OM will attempt to create it.
+
+      If undefined, then the OM will log a warning and fallback to
+      ozone.metadata.dirs.
+    </description>
+  </property>
+  <property>
     <name>ozone.metadata.dirs</name>
     <value/>
-    <tag>OZONE, OM, SCM, CONTAINER, REQUIRED, STORAGE</tag>
+    <tag>OZONE, OM, SCM, CONTAINER, STORAGE</tag>
     <description>
-      Ozone metadata is shared among OM, which acts as the namespace
-      manager for ozone, SCM which acts as the block manager and data nodes
-      which maintain the name of the key(Key Name and BlockIDs). This
-      replicated and distributed metadata store is maintained under the
-      directory pointed by this key. Since metadata can be I/O intensive, at
-      least on OM and SCM we recommend having SSDs. If you have the luxury
-      of mapping this path to SSDs on all machines in the cluster, that will
-      be excellent.
+      This setting is the fallback location for SCM, OM and DataNodes
+      to store their metadata. This setting may be used in test/PoC clusters
+      to simplify configuration.
 
-      If Ratis metadata directories are not specified, Ratis server will emit a
-      warning and use this path for storing its metadata too.
+      For production clusters or any time you care about performance, it is
+      recommended that ozone.om.db.dirs, ozone.scm.db.dirs and
+      dfs.container.ratis.datanode.storage.dir be configured separately.
     </description>
   </property>
   <property>
@@ -533,7 +574,19 @@
       Check the rocksdb documentation for more details.
     </description>
   </property>
+  <property>
+    <name>ozone.scm.db.dirs</name>
+    <value/>
+    <tag>OZONE, SCM, STORAGE, PERFORMANCE</tag>
+    <description>
+      Directory where the StorageContainerManager stores its metadata.
+      This should be specified as a single directory. If the directory
+      does not exist then the SCM will attempt to create it.
 
+      If undefined, then the SCM will log a warning and fallback to
+      ozone.metadata.dirs.
+    </description>
+  </property>
   <property>
     <name>ozone.scm.block.client.address</name>
     <value/>
@@ -784,10 +837,10 @@
   </property>
   <property>
     <name>ozone.scm.heartbeat.rpc-timeout</name>
-    <value>1000</value>
+    <value>1s</value>
     <tag>OZONE, MANAGEMENT</tag>
     <description>
-      Timeout value for the RPC from Datanode to SCM in milliseconds.
+      Timeout value for the RPC from Datanode to SCM.
     </description>
   </property>
   <property>

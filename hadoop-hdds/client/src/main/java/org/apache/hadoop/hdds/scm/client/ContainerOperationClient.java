@@ -117,17 +117,7 @@ public class ContainerOperationClient implements ScmClient {
   public void createContainer(XceiverClientSpi client,
       long containerId) throws IOException {
     String traceID = UUID.randomUUID().toString();
-    storageContainerLocationClient.notifyObjectStageChange(
-        ObjectStageChangeRequestProto.Type.container,
-        containerId,
-        ObjectStageChangeRequestProto.Op.create,
-        ObjectStageChangeRequestProto.Stage.begin);
     ContainerProtocolCalls.createContainer(client, containerId, traceID);
-    storageContainerLocationClient.notifyObjectStageChange(
-        ObjectStageChangeRequestProto.Type.container,
-        containerId,
-        ObjectStageChangeRequestProto.Op.create,
-        ObjectStageChangeRequestProto.Stage.complete);
 
     // Let us log this info after we let SCM know that we have completed the
     // creation state.
@@ -449,5 +439,25 @@ public class ContainerOperationClient implements ScmClient {
       throw new IOException("Container size unknown!");
     }
     return size;
+  }
+
+  /**
+   * Check if SCM is in chill mode.
+   *
+   * @return Returns true if SCM is in chill mode else returns false.
+   * @throws IOException
+   */
+  public boolean inChillMode() throws IOException {
+    return storageContainerLocationClient.inChillMode();
+  }
+
+  /**
+   * Force SCM out of chill mode.
+   *
+   * @return returns true if operation is successful.
+   * @throws IOException
+   */
+  public boolean forceExitChillMode() throws IOException {
+    return storageContainerLocationClient.forceExitChillMode();
   }
 }

@@ -20,6 +20,7 @@ package org.apache.hadoop.ozone.container.keyvalue;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -53,7 +54,6 @@ import org.apache.hadoop.ozone.container.common.helpers.ChunkInfo;
 import org.apache.hadoop.ozone.container.common.helpers.ContainerMetrics;
 import org.apache.hadoop.ozone.container.common.helpers.ContainerUtils;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
-import org.apache.hadoop.ozone.container.common.impl.OpenContainerBlockMap;
 import org.apache.hadoop.ozone.container.common.interfaces.Container;
 import org.apache.hadoop.ozone.container.common.interfaces.Handler;
 import org.apache.hadoop.ozone.container.common.interfaces.VolumeChoosingPolicy;
@@ -76,7 +76,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.protobuf.ByteString;
+import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import static org.apache.hadoop.hdds.HddsConfigKeys
     .HDDS_DATANODE_VOLUME_CHOOSING_POLICY;
 import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result.*;
@@ -108,7 +108,6 @@ public class KeyValueHandler extends Handler {
   private final VolumeChoosingPolicy volumeChoosingPolicy;
   private final long maxContainerSize;
   private final AutoCloseableLock handlerLock;
-  private final OpenContainerBlockMap openContainerBlockMap;
 
   public KeyValueHandler(Configuration config, ContainerSet contSet,
       VolumeSet volSet, ContainerMetrics metrics) {
@@ -137,20 +136,11 @@ public class KeyValueHandler extends Handler {
     // this handler lock is used for synchronizing createContainer Requests,
     // so using a fair lock here.
     handlerLock = new AutoCloseableLock(new ReentrantLock(true));
-    openContainerBlockMap = new OpenContainerBlockMap();
   }
 
   @VisibleForTesting
   public VolumeChoosingPolicy getVolumeChoosingPolicyForTesting() {
     return volumeChoosingPolicy;
-  }
-  /**
-   * Returns OpenContainerBlockMap instance.
-   *
-   * @return OpenContainerBlockMap
-   */
-  public OpenContainerBlockMap getOpenContainerBlockMap() {
-    return openContainerBlockMap;
   }
 
   @Override
@@ -354,7 +344,6 @@ public class KeyValueHandler extends Handler {
       } else {
         long containerId = kvContainer.getContainerData().getContainerID();
         containerSet.removeContainer(containerId);
-        openContainerBlockMap.removeContainer(containerId);
         // Release the lock first.
         // Avoid holding write locks for disk operations
         kvContainer.writeUnlock();
@@ -385,28 +374,18 @@ public class KeyValueHandler extends Handler {
     }
 
     long containerID = kvContainer.getContainerData().getContainerID();
-    ContainerDataProto.State containerState = kvContainer.getContainerState();
-
     try {
-      if (containerState == ContainerDataProto.State .CLOSED) {
+      checkContainerOpen(kvContainer);
+      // TODO : The close command should move the container to either quasi
+      // closed/closed depending upon how the closeContainer gets executed.
+      // If it arrives by Standalone, it will be moved to Quasi Closed or
+      // otherwise moved to Closed state if it gets executed via Ratis.
+      kvContainer.close();
+    } catch (StorageContainerException ex) {
+      if (ex.getResult() == CLOSED_CONTAINER_IO) {
         LOG.debug("Container {} is already closed.", containerID);
         return ContainerUtils.getSuccessResponse(request);
-      } else if (containerState == ContainerDataProto.State .INVALID) {
-        LOG.debug("Invalid container data. ContainerID: {}", containerID);
-        throw new StorageContainerException("Invalid container data. " +
-            "ContainerID: " + containerID, INVALID_CONTAINER_STATE);
       }
-
-      KeyValueContainerData kvData = kvContainer.getContainerData();
-
-      // remove the container from open block map once, all the blocks
-      // have been committed and the container is closed
-      kvData.setState(ContainerDataProto.State.CLOSING);
-      commitPendingBlocks(kvContainer);
-      kvContainer.close();
-      // make sure the the container open keys from BlockMap gets removed
-      openContainerBlockMap.removeContainer(kvData.getContainerID());
-    } catch (StorageContainerException ex) {
       return ContainerUtils.logAndReturnError(LOG, ex, request);
     } catch (IOException ex) {
       return ContainerUtils.logAndReturnError(LOG,
@@ -435,8 +414,9 @@ public class KeyValueHandler extends Handler {
 
       BlockData blockData = BlockData.getFromProtoBuf(
           request.getPutBlock().getBlockData());
+      Preconditions.checkNotNull(blockData);
       long numBytes = blockData.getProtoBufMessage().toByteArray().length;
-      blockLength = commitKey(blockData, kvContainer);
+      blockLength = blockManager.putBlock(kvContainer, blockData);
       metrics.incContainerBytesStats(Type.PutBlock, numBytes);
     } catch (StorageContainerException ex) {
       return ContainerUtils.logAndReturnError(LOG, ex, request);
@@ -449,24 +429,6 @@ public class KeyValueHandler extends Handler {
     return BlockUtils.putBlockResponseSuccess(request, blockLength);
   }
 
-  private void commitPendingBlocks(KeyValueContainer kvContainer)
-      throws IOException {
-    long containerId = kvContainer.getContainerData().getContainerID();
-    List<BlockData> pendingBlocks =
-        this.openContainerBlockMap.getOpenBlocks(containerId);
-    for(BlockData blockData : pendingBlocks) {
-      commitKey(blockData, kvContainer);
-    }
-  }
-
-  private long commitKey(BlockData blockData, KeyValueContainer kvContainer)
-      throws IOException {
-    Preconditions.checkNotNull(blockData);
-    long length = blockManager.putBlock(kvContainer, blockData);
-    //update the open key Map in containerManager
-    this.openContainerBlockMap.removeFromBlockMap(blockData.getBlockID());
-    return length;
-  }
   /**
    * Handle Get Block operation. Calls BlockManager to process the request.
    */
@@ -514,11 +476,6 @@ public class KeyValueHandler extends Handler {
     try {
       BlockID blockID = BlockID
           .getFromProtobuf(request.getGetCommittedBlockLength().getBlockID());
-      // Check if it really exists in the openContainerBlockMap
-      if (openContainerBlockMap.checkIfBlockExists(blockID)) {
-        String msg = "Block " + blockID + " is not committed yet.";
-        throw new StorageContainerException(msg, BLOCK_NOT_COMMITTED);
-      }
       blockLength = blockManager.getCommittedBlockLength(kvContainer, blockID);
     } catch (StorageContainerException ex) {
       return ContainerUtils.logAndReturnError(LOG, ex, request);
@@ -618,7 +575,6 @@ public class KeyValueHandler extends Handler {
       Preconditions.checkNotNull(chunkInfo);
 
       chunkManager.deleteChunk(kvContainer, blockID, chunkInfo);
-      openContainerBlockMap.removeChunk(blockID, chunkInfoProto);
     } catch (StorageContainerException ex) {
       return ContainerUtils.logAndReturnError(LOG, ex, request);
     } catch (IOException ex) {
@@ -652,10 +608,10 @@ public class KeyValueHandler extends Handler {
       ChunkInfo chunkInfo = ChunkInfo.getFromProtoBuf(chunkInfoProto);
       Preconditions.checkNotNull(chunkInfo);
 
-      byte[] data = null;
+      ByteBuffer data = null;
       if (request.getWriteChunk().getStage() == Stage.WRITE_DATA ||
           request.getWriteChunk().getStage() == Stage.COMBINED) {
-        data = request.getWriteChunk().getData().toByteArray();
+        data = request.getWriteChunk().getData().asReadOnlyByteBuffer();
       }
 
       chunkManager.writeChunk(kvContainer, blockID, chunkInfo, data,
@@ -666,13 +622,6 @@ public class KeyValueHandler extends Handler {
           request.getWriteChunk().getStage() == Stage.COMBINED) {
         metrics.incContainerBytesStats(Type.WriteChunk, request.getWriteChunk()
             .getChunkData().getLen());
-      }
-
-      if (request.getWriteChunk().getStage() == Stage.COMMIT_DATA
-          || request.getWriteChunk().getStage() == Stage.COMBINED) {
-        // the openContainerBlockMap should be updated only during
-        // COMMIT_STAGE of handling write chunk request.
-        openContainerBlockMap.addChunk(blockID, chunkInfoProto);
       }
     } catch (StorageContainerException ex) {
       return ContainerUtils.logAndReturnError(LOG, ex, request);
@@ -713,7 +662,7 @@ public class KeyValueHandler extends Handler {
       ChunkInfo chunkInfo = ChunkInfo.getFromProtoBuf(
           putSmallFileReq.getChunkInfo());
       Preconditions.checkNotNull(chunkInfo);
-      byte[] data = putSmallFileReq.getData().toByteArray();
+      ByteBuffer data = putSmallFileReq.getData().asReadOnlyByteBuffer();
       // chunks will be committed as a part of handling putSmallFile
       // here. There is no need to maintain this info in openContainerBlockMap.
       chunkManager.writeChunk(
@@ -724,7 +673,7 @@ public class KeyValueHandler extends Handler {
       blockData.setChunks(chunks);
       // TODO: add bcsId as a part of putSmallFile transaction
       blockManager.putBlock(kvContainer, blockData);
-      metrics.incContainerBytesStats(Type.PutSmallFile, data.length);
+      metrics.incContainerBytesStats(Type.PutSmallFile, data.capacity());
 
     } catch (StorageContainerException ex) {
       return ContainerUtils.logAndReturnError(LOG, ex, request);
@@ -756,8 +705,6 @@ public class KeyValueHandler extends Handler {
     try {
       BlockID blockID = BlockID.getFromProtobuf(getSmallFileReq.getBlock()
           .getBlockID());
-      // TODO: add bcsId as a part of getSmallFile transaction
-      // by default its 0
       BlockData responseData = blockManager.getBlock(kvContainer, blockID);
 
       ContainerProtos.ChunkInfo chunkInfo = null;
@@ -800,14 +747,21 @@ public class KeyValueHandler extends Handler {
 
     ContainerDataProto.State containerState = kvContainer.getContainerState();
 
-    if (containerState == ContainerDataProto.State.OPEN) {
+    /**
+     * In a closing state, follower will receive transactions from leader.
+     * Once the leader is put to closing state, it will reject further requests
+     * from clients. Only the transactions which happened before the container
+     * in the leader goes to closing state, will arrive here even the container
+     * might already be in closing state here.
+     */
+    if (containerState == ContainerDataProto.State.OPEN
+        || containerState == ContainerDataProto.State.CLOSING) {
       return;
     } else {
       String msg = "Requested operation not allowed as ContainerState is " +
           containerState;
       ContainerProtos.Result result = null;
       switch (containerState) {
-      case CLOSING:
       case CLOSED:
         result = CLOSED_CONTAINER_IO;
         break;

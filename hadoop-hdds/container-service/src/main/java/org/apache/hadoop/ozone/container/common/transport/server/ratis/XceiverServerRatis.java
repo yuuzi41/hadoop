@@ -186,6 +186,20 @@ public final class XceiverServerRatis implements XceiverServerSpi {
     RaftClientConfigKeys.Rpc
         .setRequestTimeout(properties, clientRequestTimeout);
 
+    // set the configs enable and set the stateMachineData sync timeout
+    RaftServerConfigKeys.Log.StateMachineData.setSync(properties, true);
+    timeUnit = OzoneConfigKeys.
+        DFS_CONTAINER_RATIS_STATEMACHINEDATA_SYNC_TIMEOUT_DEFAULT.getUnit();
+    duration = conf.getTimeDuration(
+        OzoneConfigKeys.DFS_CONTAINER_RATIS_STATEMACHINEDATA_SYNC_TIMEOUT,
+        OzoneConfigKeys.
+            DFS_CONTAINER_RATIS_STATEMACHINEDATA_SYNC_TIMEOUT_DEFAULT
+            .getDuration(), timeUnit);
+    final TimeDuration dataSyncTimeout =
+        TimeDuration.valueOf(duration, timeUnit);
+    RaftServerConfigKeys.Log.StateMachineData
+        .setSyncTimeout(properties, dataSyncTimeout);
+
     // Set the server Request timeout
     timeUnit = OzoneConfigKeys.DFS_RATIS_SERVER_REQUEST_TIMEOUT_DURATION_DEFAULT
         .getUnit();
@@ -273,6 +287,17 @@ public final class XceiverServerRatis implements XceiverServerSpi {
       setAutoTriggerEnabled(properties, true);
     RaftServerConfigKeys.Snapshot.
       setAutoTriggerThreshold(properties, snapshotThreshold);
+    int logQueueSize =
+        conf.getInt(OzoneConfigKeys.DFS_CONTAINER_RATIS_LOG_QUEUE_SIZE,
+            OzoneConfigKeys.DFS_CONTAINER_RATIS_LOG_QUEUE_SIZE_DEFAULT);
+    RaftServerConfigKeys.Log.setQueueSize(properties, logQueueSize);
+
+    int numSyncRetries = conf.getInt(
+        OzoneConfigKeys.DFS_CONTAINER_RATIS_STATEMACHINEDATA_SYNC_RETRIES,
+        OzoneConfigKeys.
+            DFS_CONTAINER_RATIS_STATEMACHINEDATA_SYNC_RETRIES_DEFAULT);
+    RaftServerConfigKeys.Log.StateMachineData.setSyncTimeoutRetry(properties,
+        numSyncRetries);
 
     return properties;
   }

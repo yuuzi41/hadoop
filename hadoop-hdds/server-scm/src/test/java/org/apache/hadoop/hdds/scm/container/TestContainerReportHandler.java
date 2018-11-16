@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
+import org.apache.hadoop.hdds.HddsConfigKeys;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
@@ -32,6 +33,7 @@ import org.apache.hadoop.hdds.scm.container.replication
     .ReplicationActivityStatus;
 import org.apache.hadoop.hdds.scm.container.replication.ReplicationRequest;
 import org.apache.hadoop.hdds.scm.node.NodeManager;
+import org.apache.hadoop.hdds.scm.node.states.NodeNotFoundException;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineManager;
 import org.apache.hadoop.hdds.scm.pipeline.SCMPipelineManager;
 import org.apache.hadoop.hdds.scm.server.SCMDatanodeHeartbeatDispatcher
@@ -40,7 +42,6 @@ import org.apache.hadoop.hdds.server.events.Event;
 import org.apache.hadoop.hdds.server.events.EventPublisher;
 
 import org.apache.hadoop.hdds.server.events.EventQueue;
-import org.apache.hadoop.ozone.OzoneConfigKeys;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.junit.Assert;
 import org.junit.Before;
@@ -69,12 +70,12 @@ public class TestContainerReportHandler implements EventPublisher {
   //TODO: Rewrite it
   @Ignore
   @Test
-  public void test() throws IOException {
+  public void test() throws IOException, NodeNotFoundException {
     String testDir = GenericTestUtils.getTempPath(
         this.getClass().getSimpleName());
     //GIVEN
     OzoneConfiguration conf = new OzoneConfiguration();
-    conf.set(OzoneConfigKeys.OZONE_METADATA_DIRS, testDir);
+    conf.set(HddsConfigKeys.OZONE_METADATA_DIRS, testDir);
     EventQueue eventQueue = new EventQueue();
     PipelineManager pipelineManager =
         new SCMPipelineManager(conf, nodeManager, eventQueue);
@@ -85,28 +86,28 @@ public class TestContainerReportHandler implements EventPublisher {
         new ReplicationActivityStatus();
 
     ContainerReportHandler reportHandler =
-        new ContainerReportHandler(containerManager, nodeManager,
-            replicationActivityStatus);
+        new ContainerReportHandler(nodeManager, pipelineManager,
+            containerManager, replicationActivityStatus);
 
     DatanodeDetails dn1 = TestUtils.randomDatanodeDetails();
     DatanodeDetails dn2 = TestUtils.randomDatanodeDetails();
     DatanodeDetails dn3 = TestUtils.randomDatanodeDetails();
     DatanodeDetails dn4 = TestUtils.randomDatanodeDetails();
-    nodeManager.addDatanodeInContainerMap(dn1.getUuid(), new HashSet<>());
-    nodeManager.addDatanodeInContainerMap(dn2.getUuid(), new HashSet<>());
-    nodeManager.addDatanodeInContainerMap(dn3.getUuid(), new HashSet<>());
-    nodeManager.addDatanodeInContainerMap(dn4.getUuid(), new HashSet<>());
+    nodeManager.setContainers(dn1, new HashSet<>());
+    nodeManager.setContainers(dn2, new HashSet<>());
+    nodeManager.setContainers(dn3, new HashSet<>());
+    nodeManager.setContainers(dn4, new HashSet<>());
 
     ContainerInfo cont1 = containerManager
         .allocateContainer(ReplicationType.STAND_ALONE,
-            ReplicationFactor.THREE, "root").getContainerInfo();
+            ReplicationFactor.THREE, "root");
     ContainerInfo cont2 = containerManager
         .allocateContainer(ReplicationType.STAND_ALONE,
-            ReplicationFactor.THREE, "root").getContainerInfo();
+            ReplicationFactor.THREE, "root");
     // Open Container
     ContainerInfo cont3 = containerManager
         .allocateContainer(ReplicationType.STAND_ALONE,
-            ReplicationFactor.THREE, "root").getContainerInfo();
+            ReplicationFactor.THREE, "root");
 
     long c1 = cont1.getContainerID();
     long c2 = cont2.getContainerID();

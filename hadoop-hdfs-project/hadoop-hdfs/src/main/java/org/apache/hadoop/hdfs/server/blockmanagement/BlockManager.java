@@ -2447,7 +2447,7 @@ public class BlockManager implements BlockStatsMXBean {
     return providedStorageMap.getCapacity();
   }
 
-  public void updateHeartbeat(DatanodeDescriptor node, StorageReport[] reports,
+  void updateHeartbeat(DatanodeDescriptor node, StorageReport[] reports,
       long cacheCapacity, long cacheUsed, int xceiverCount, int failedVolumes,
       VolumeFailureSummary volumeFailureSummary) {
 
@@ -2455,6 +2455,17 @@ public class BlockManager implements BlockStatsMXBean {
       providedStorageMap.updateStorage(node, report.getStorage());
     }
     node.updateHeartbeat(reports, cacheCapacity, cacheUsed, xceiverCount,
+        failedVolumes, volumeFailureSummary);
+  }
+
+  void updateHeartbeatState(DatanodeDescriptor node,
+      StorageReport[] reports, long cacheCapacity, long cacheUsed,
+      int xceiverCount, int failedVolumes,
+      VolumeFailureSummary volumeFailureSummary) {
+    for (StorageReport report: reports) {
+      providedStorageMap.updateStorage(node, report.getStorage());
+    }
+    node.updateHeartbeatState(reports, cacheCapacity, cacheUsed, xceiverCount,
         failedVolumes, volumeFailureSummary);
   }
 
@@ -3521,6 +3532,44 @@ public class BlockManager implements BlockStatsMXBean {
    */
   public boolean hasNonEcBlockUsingStripedID(){
     return hasNonEcBlockUsingStripedID;
+  }
+
+  /**
+   * Schedule replication work for a specified list of mis-replicated
+   * blocks and return total number of blocks scheduled for replication.
+   *
+   * @param blocks A list of blocks for which replication work needs to
+   *              be scheduled.
+   * @return Total number of blocks for which replication work is scheduled.
+   **/
+  public int processMisReplicatedBlocks(List<BlockInfo> blocks) {
+    int processed = 0;
+    Iterator<BlockInfo> iter = blocks.iterator();
+
+    try {
+      while (isPopulatingReplQueues() && namesystem.isRunning()
+              && !Thread.currentThread().isInterrupted()
+              && iter.hasNext()) {
+        int limit = processed + numBlocksPerIteration;
+        namesystem.writeLockInterruptibly();
+        try {
+          while (iter.hasNext() && processed < limit) {
+            BlockInfo blk = iter.next();
+            MisReplicationResult r = processMisReplicatedBlock(blk);
+            LOG.debug("BLOCK* processMisReplicatedBlocks: " +
+                    "Re-scanned block {}, result is {}", blk, r);
+          }
+        } finally {
+          namesystem.writeUnlock();
+        }
+      }
+    } catch (InterruptedException ex) {
+      LOG.info("Caught InterruptedException while scheduling replication work" +
+              " for mis-replicated blocks");
+      Thread.currentThread().interrupt();
+    }
+
+    return processed;
   }
 
   /**
