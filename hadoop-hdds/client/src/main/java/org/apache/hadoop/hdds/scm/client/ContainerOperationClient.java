@@ -78,9 +78,7 @@ public class ContainerOperationClient implements ScmClient {
     containerSizeB = size;
   }
 
-  /**
-   * @inheritDoc
-   */
+
   @Override
   public ContainerWithPipeline createContainer(String owner)
       throws IOException {
@@ -159,7 +157,8 @@ public class ContainerOperationClient implements ScmClient {
     //    ObjectStageChangeRequestProto.Op.create,
     //    ObjectStageChangeRequestProto.Stage.begin);
 
-    client.createPipeline();
+    // client.createPipeline();
+    // TODO: Use PipelineManager to createPipeline
 
     //storageContainerLocationClient.notifyObjectStageChange(
     //    ObjectStageChangeRequestProto.Type.pipeline,
@@ -173,9 +172,6 @@ public class ContainerOperationClient implements ScmClient {
         pipeline.toString());
   }
 
-  /**
-   * @inheritDoc
-   */
   @Override
   public ContainerWithPipeline createContainer(HddsProtos.ReplicationType type,
       HddsProtos.ReplicationFactor factor, String owner) throws IOException {
@@ -226,6 +222,17 @@ public class ContainerOperationClient implements ScmClient {
       throws IOException {
     return storageContainerLocationClient.createReplicationPipeline(type,
         factor, nodePool);
+  }
+
+  @Override
+  public List<Pipeline> listPipelines() throws IOException {
+    return storageContainerLocationClient.listPipelines();
+  }
+
+  @Override
+  public void closePipeline(HddsProtos.PipelineID pipelineID)
+      throws IOException {
+    storageContainerLocationClient.closePipeline(pipelineID);
   }
 
   @Override
@@ -280,9 +287,6 @@ public class ContainerOperationClient implements ScmClient {
     deleteContainer(containerID, info.getPipeline(), force);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @Override
   public List<ContainerInfo> listContainer(long startContainerID,
       int count) throws IOException {
