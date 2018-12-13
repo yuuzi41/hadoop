@@ -718,9 +718,11 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   public void stop() {
     try {
       // Cancel the metrics timer and set to null.
-      metricsTimer.cancel();
-      metricsTimer = null;
-      scheduleOMMetricsWriteTask = null;
+      if (metricsTimer!= null) {
+        metricsTimer.cancel();
+        metricsTimer = null;
+        scheduleOMMetricsWriteTask = null;
+      }
       omRpcServer.stop();
       keyManager.stop();
       stopSecretManager();
