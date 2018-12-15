@@ -99,11 +99,11 @@ public class TestFsShellPermission {
     PrintStream old = System.out;
     int ret;
     try {
-      System.setOut(out);
+      //System.setOut(out);
       ret = shell.run(args);
       out.close();
     } finally {
-      System.setOut(old);
+      //System.setOut(old);
     }
     return String.valueOf(ret);
   }

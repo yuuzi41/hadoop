@@ -1139,8 +1139,8 @@ public class TestMaintenanceState extends AdminStatesBaseTest {
   public void testReportMaintenanceNodes() throws Exception {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     ByteArrayOutputStream err = new ByteArrayOutputStream();
-    System.setOut(new PrintStream(out));
-    System.setErr(new PrintStream(err));
+    //System.setOut(new PrintStream(out));
+    //System.setErr(new PrintStream(err));
 
     LOG.info("Starting testReportMaintenanceNodes");
     int expirationInMs = 30 * 1000;

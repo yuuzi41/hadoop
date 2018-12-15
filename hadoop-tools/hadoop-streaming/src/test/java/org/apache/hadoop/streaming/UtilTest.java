@@ -80,8 +80,8 @@ class UtilTest {
       new File(antTestDir_).mkdirs();
       File outFile = new File(antTestDir_, testName_+".log");
       PrintStream out = new PrintStream(new FileOutputStream(outFile));
-      System.setOut(out);
-      System.setErr(out);
+      //System.setOut(out);
+      //System.setErr(out);
     }
   }
 

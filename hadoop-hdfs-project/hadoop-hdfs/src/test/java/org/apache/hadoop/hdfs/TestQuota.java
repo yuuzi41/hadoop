@@ -122,8 +122,8 @@ public class TestQuota {
   }
 
   private static void redirectStream() {
-    System.setOut(new PrintStream(OUT_STREAM));
-    System.setErr(new PrintStream(ERR_STREAM));
+    //System.setOut(new PrintStream(OUT_STREAM));
+    //System.setErr(new PrintStream(ERR_STREAM));
   }
 
   private static void resetStream() {
@@ -137,8 +137,8 @@ public class TestQuota {
       System.out.flush();
       System.err.flush();
     } finally {
-      System.setOut(OLD_OUT);
-      System.setErr(OLD_ERR);
+      //System.setOut(OLD_OUT);
+      //System.setErr(OLD_ERR);
     }
 
     if (cluster != null) {
@@ -1148,7 +1148,7 @@ public class TestQuota {
     ByteArrayOutputStream err = new ByteArrayOutputStream();
     PrintStream oldErr = System.err;
     try {
-      System.setErr(new PrintStream(err));
+      //System.setErr(new PrintStream(err));
       String[] args =
           { "-setSpaceQuota", "100", "-storageType", "COLD", "/testDir" };
       admin.run(args);
@@ -1156,7 +1156,7 @@ public class TestQuota {
       assertTrue(
           errOutput.contains(StorageType.getTypesSupportingQuota().toString()));
     } finally {
-      System.setErr(oldErr);
+      //System.setErr(oldErr);
     }
   }
 

@@ -233,7 +233,7 @@ public class TestDFSShell {
     PrintStream psBackup = System.out;
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     PrintStream psOut = new PrintStream(out);
-    System.setOut(psOut);
+    //System.setOut(psOut);
     FsShell shell = new FsShell(dfs.getConf());
     try {
       Path myPath = new Path("/testDu/dir");
@@ -290,7 +290,7 @@ public class TestDFSShell {
       Long combinedLength = myFileLength + myFile2Length;
       assertThat(returnString, containsString(combinedLength.toString()));
     } finally {
-      System.setOut(psBackup);
+      //System.setOut(psBackup);
     }
                                   
   }
@@ -304,7 +304,7 @@ public class TestDFSShell {
     final FsShell shell = new FsShell(dfs.getConf());
 
     try {
-      System.setOut(psOut);
+      //System.setOut(psOut);
       final Path parent = new Path("/testDuSnapshots");
       final Path dir = new Path(parent, "dir");
       mkdir(dfs, dir);
@@ -407,7 +407,7 @@ public class TestDFSShell {
       assertTrue(returnString.contains(exludeSnapshotLength.toString()));
       out.reset();
     } finally {
-      System.setOut(psBackup);
+      //System.setOut(psBackup);
     }
   }
 
@@ -416,7 +416,7 @@ public class TestDFSShell {
     final PrintStream psBackup = System.out;
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     final PrintStream psOut = new PrintStream(out);
-    System.setOut(psOut);
+    //System.setOut(psOut);
     final FsShell shell = new FsShell(dfs.getConf());
 
     try {
@@ -491,7 +491,7 @@ public class TestDFSShell {
       assertEquals(file2Length + newFileLength, in.nextLong()); //CONTENT_SIZE
       out.reset();
     } finally {
-      System.setOut(psBackup);
+      //System.setOut(psBackup);
     }
   }
 
@@ -590,7 +590,7 @@ public class TestDFSShell {
       bak = System.err;
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       PrintStream tmp = new PrintStream(out);
-      System.setErr(tmp);
+      //System.setErr(tmp);
       String[] argv = new String[2];
       argv[0] = "-cat";
       argv[1] = root.toUri().getPath();
@@ -719,7 +719,7 @@ public class TestDFSShell {
       assertTrue(returned.isEmpty());
     } finally {
       if (bak != null) {
-        System.setErr(bak);
+        //System.setErr(bak);
       }
     }
   }
@@ -860,7 +860,7 @@ public class TestDFSShell {
       pout.write(text.getBytes());
     }
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    System.setOut(new PrintStream(out));
+    //System.setOut(new PrintStream(out));
     final String[] argv = new String[]{"-tail", testFile.toString()};
     final int ret = ToolRunner.run(new FsShell(dfs.getConf()), argv);
 
@@ -882,7 +882,7 @@ public class TestDFSShell {
     dfs.create(testFile);
 
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    System.setOut(new PrintStream(out));
+    //System.setOut(new PrintStream(out));
     final Thread tailer = new Thread() {
       @Override
       public void run() {
@@ -950,7 +950,7 @@ public class TestDFSShell {
       zout.close();
 
       ByteArrayOutputStream out = new ByteArrayOutputStream();
-      System.setOut(new PrintStream(out));
+      //System.setOut(new PrintStream(out));
 
       String[] argv = new String[2];
       argv[0] = "-text";
@@ -970,7 +970,7 @@ public class TestDFSShell {
       writer.append(new Text("Foo"), new Text("Bar"));
       writer.close();
       out = new ByteArrayOutputStream();
-      System.setOut(new PrintStream(out));
+      //System.setOut(new PrintStream(out));
       argv = new String[2];
       argv[0] = "-text";
       argv[1] = new Path(root, "file.gz").toString();
@@ -987,7 +987,7 @@ public class TestDFSShell {
       dout.write(outbytes);
       dout.close();
       out = new ByteArrayOutputStream();
-      System.setOut(new PrintStream(out));
+      //System.setOut(new PrintStream(out));
       argv = new String[2];
       argv[0] = "-text";
       argv[1] = new Path(root, "file.deflate").toString();
@@ -1008,7 +1008,7 @@ public class TestDFSShell {
       fout.write(writebytes);
       fout.close();
       out = new ByteArrayOutputStream();
-      System.setOut(new PrintStream(out));
+      //System.setOut(new PrintStream(out));
       argv = new String[2];
       argv[0] = "-text";
       argv[1] = new Path(root, p).toString();
@@ -1019,7 +1019,7 @@ public class TestDFSShell {
       out.reset();
     } finally {
       if (null != bak) {
-        System.setOut(bak);
+        //System.setOut(bak);
       }
     }
   }
@@ -1152,7 +1152,7 @@ public class TestDFSShell {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream(); 
     PrintStream out = new PrintStream(bytes);
     PrintStream oldOut = System.out;
-    System.setOut(out);
+    //System.setOut(out);
     Scanner in = null;
     String results = null;
     try {
@@ -1162,7 +1162,7 @@ public class TestDFSShell {
       assertEquals(dirs, in.nextLong());
       assertEquals(files, in.nextLong());
     } finally {
-      System.setOut(oldOut);
+      //System.setOut(oldOut);
       if (in!=null) in.close();
       IOUtils.closeStream(out);
       System.out.println("results:\n" + results);
@@ -1812,7 +1812,7 @@ public class TestDFSShell {
           FsShell fshell = new FsShell(dfs.getConf());
           ByteArrayOutputStream out = new ByteArrayOutputStream();
           PrintStream tmp = new PrintStream(out);
-          System.setErr(tmp);
+          //System.setErr(tmp);
           String[] args = new String[2];
           args[0] = "-ls";
           args[1] = "/foo";
@@ -1827,7 +1827,7 @@ public class TestDFSShell {
       });
     } finally {
       if (bak != null) {
-        System.setErr(bak);
+        //System.setErr(bak);
       }
     }
   }
@@ -1945,7 +1945,7 @@ public class TestDFSShell {
     final String atime2 = fmt.format(new Date(status2.getAccessTime()));
 
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    System.setOut(new PrintStream(out));
+    //System.setOut(new PrintStream(out));
 
     doFsStat(dfs.getConf(), null);
 
@@ -2043,15 +2043,15 @@ public class TestDFSShell {
     final PrintStream out = new PrintStream(bytes);
     final PrintStream oldOut = System.out;
     final PrintStream oldErr = System.err;
-    System.setOut(out);
-    System.setErr(out);
+    //System.setOut(out);
+    //System.setErr(out);
     final String results;
     try {
       assertEquals(returnvalue, shell.run(new String[]{"-lsr", root}));
       results = bytes.toString();
     } finally {
-      System.setOut(oldOut);
-      System.setErr(oldErr);
+      //System.setOut(oldOut);
+      //System.setErr(oldErr);
       IOUtils.closeStream(out);
     }
     System.out.println("results:\n" + results);
@@ -2662,8 +2662,8 @@ public class TestDFSShell {
       final ByteArrayOutputStream bao = new ByteArrayOutputStream();
       final PrintStream capture = new PrintStream(bao);
 
-      System.setOut(capture);
-      System.setErr(capture);
+      //System.setOut(capture);
+      //System.setErr(capture);
 
       final String[] argv = new String[] { "-setrep", "1", hdfsFile.toString() };
 
@@ -2671,8 +2671,8 @@ public class TestDFSShell {
         assertEquals("Command did not return the expected exit code",
             1, shell.run(argv));
       } finally {
-        System.setOut(origOut);
-        System.setErr(origErr);
+        //System.setOut(origOut);
+        //System.setErr(origErr);
       }
 
       assertTrue("Error message is not the expected error message"
@@ -2865,7 +2865,7 @@ public class TestDFSShell {
       bak = System.err;
       final FsShell fshell = new FsShell(dfs.getConf());
       final ByteArrayOutputStream out = new ByteArrayOutputStream();
-      System.setErr(new PrintStream(out));
+      //System.setErr(new PrintStream(out));
       
       // No permission to write xattr
       dfs.setPermission(p, new FsPermission((short) 0700));
@@ -2914,7 +2914,7 @@ public class TestDFSShell {
       });
     } finally {
       if (bak != null) {
-        System.setErr(bak);
+        //System.setErr(bak);
       }
     }
   }
@@ -2930,7 +2930,7 @@ public class TestDFSShell {
 
       final FsShell fshell = new FsShell(dfs.getConf());
       final ByteArrayOutputStream out = new ByteArrayOutputStream();
-      System.setOut(new PrintStream(out));
+      //System.setOut(new PrintStream(out));
 
       doSetXattr(out, fshell,
         new String[] {"-setfattr", "-n", "User.Foo", p.toString()},
@@ -2977,7 +2977,7 @@ public class TestDFSShell {
 
     } finally {
       if (bak != null) {
-        System.setOut(bak);
+        //System.setOut(bak);
       }
     }
   }
@@ -3054,7 +3054,7 @@ public class TestDFSShell {
 
       final FsShell fshell = new FsShell(dfs.getConf());
       final ByteArrayOutputStream out = new ByteArrayOutputStream();
-      System.setErr(new PrintStream(out));
+      //System.setErr(new PrintStream(out));
 
       //Test 1.  Let user1 be owner for /foo
       user1.doAs(new PrivilegedExceptionAction<Object>() {
@@ -3196,7 +3196,7 @@ public class TestDFSShell {
       });
     } finally {
       if (bak != null) {
-        System.setErr(bak);
+        //System.setErr(bak);
       }
     }
   }
@@ -3219,7 +3219,7 @@ public class TestDFSShell {
 
       final FsShell fshell = new FsShell(dfs.getConf());
       final ByteArrayOutputStream out = new ByteArrayOutputStream();
-      System.setErr(new PrintStream(out));
+      //System.setErr(new PrintStream(out));
 
       // No permission for "other".
       dfs.setPermission(p, new FsPermission((short) 0700));
@@ -3256,7 +3256,7 @@ public class TestDFSShell {
       }
     } finally {
       if (bakErr != null) {
-        System.setErr(bakErr);
+        //System.setErr(bakErr);
       }
     }
   }
@@ -3325,7 +3325,7 @@ public class TestDFSShell {
     PrintStream syserr = System.err;
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream ps = new PrintStream(baos);
-    System.setErr(ps);
+    //System.setErr(ps);
     try {
       runCmd(shell, "-ls", "/.reserved");
       assertEquals(0, baos.toString().length());
@@ -3333,7 +3333,7 @@ public class TestDFSShell {
       runCmd(shell, "-ls", "/.reserved/raw/.reserved");
       assertTrue(baos.toString().contains("No such file or directory"));
     } finally {
-      System.setErr(syserr);
+      //System.setErr(syserr);
       cluster.shutdown();
     }
   }
@@ -3386,13 +3386,13 @@ public class TestDFSShell {
     PrintStream syserr = System.err;
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream ps = new PrintStream(baos);
-    System.setErr(ps);
+    //System.setErr(ps);
     try {
       FsShell shell = new FsShell(dfs.getConf());
       runCmd(shell, "-cp", src.toString(), "/.reserved");
       assertTrue(baos.toString().contains("Invalid path name /.reserved"));
     } finally {
-      System.setErr(syserr);
+      //System.setErr(syserr);
     }
   }
 
@@ -3402,13 +3402,13 @@ public class TestDFSShell {
     PrintStream syserr = System.err;
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream ps = new PrintStream(baos);
-    System.setErr(ps);
+    //System.setErr(ps);
     try {
       FsShell shell = new FsShell(dfs.getConf());
       runCmd(shell, "-chmod", "777", "/.reserved");
       assertTrue(baos.toString().contains("Invalid path name /.reserved"));
     } finally {
-      System.setErr(syserr);
+      //System.setErr(syserr);
     }
   }
 
@@ -3418,13 +3418,13 @@ public class TestDFSShell {
     PrintStream syserr = System.err;
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream ps = new PrintStream(baos);
-    System.setErr(ps);
+    //System.setErr(ps);
     try {
       FsShell shell = new FsShell(dfs.getConf());
       runCmd(shell, "-chown", "user1", "/.reserved");
       assertTrue(baos.toString().contains("Invalid path name /.reserved"));
     } finally {
-      System.setErr(syserr);
+      //System.setErr(syserr);
     }
   }
 

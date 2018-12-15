@@ -350,7 +350,7 @@ public class TestJobHistoryParsing {
     // test output for HistoryViewer
     PrintStream stdps = System.out;
     try {
-      System.setOut(new PrintStream(outContent));
+      //System.setOut(new PrintStream(outContent));
       HistoryViewer viewer;
       synchronized (fileInfo) {
         viewer = new HistoryViewer(fc.makeQualified(
@@ -370,7 +370,7 @@ public class TestJobHistoryParsing {
             taskInfo.getTaskId().toString()) > 0);
       }
     } finally {
-      System.setOut(stdps);
+      //System.setOut(stdps);
 
     }
   }

@@ -66,7 +66,7 @@ public class TestKMSAudit {
     memOut = new ByteArrayOutputStream();
     filterOut = new FilterOut(memOut);
     capturedOut = new PrintStream(filterOut);
-    System.setErr(capturedOut);
+    //System.setErr(capturedOut);
     PropertyConfigurator.configure(Thread.currentThread().
         getContextClassLoader()
         .getResourceAsStream("log4j-kmsaudit.properties"));
@@ -76,7 +76,7 @@ public class TestKMSAudit {
 
   @After
   public void cleanUp() {
-    System.setErr(originalOut);
+    //System.setErr(originalOut);
     LogManager.resetConfiguration();
     kmsAudit.shutdown();
   }

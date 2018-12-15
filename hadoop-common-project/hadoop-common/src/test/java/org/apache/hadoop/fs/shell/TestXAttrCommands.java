@@ -41,14 +41,14 @@ public class TestXAttrCommands {
   public void setup() throws IOException {
     errContent.reset();
     initialStdErr = System.err;
-    System.setErr(new PrintStream(errContent));
+    //System.setErr(new PrintStream(errContent));
     conf = new Configuration();
   }
   
   @After
   public void cleanUp() throws Exception {
     errContent.reset();
-    System.setErr(initialStdErr);
+    //System.setErr(initialStdErr);
   }
 
   @Test

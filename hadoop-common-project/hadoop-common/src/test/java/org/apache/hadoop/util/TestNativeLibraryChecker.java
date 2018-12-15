@@ -65,7 +65,7 @@ public class TestNativeLibraryChecker extends TestCase {
     ExitUtil.disableSystemExit();
     ByteArrayOutputStream outContent = new ByteArrayOutputStream();
     PrintStream originalPs = System.out;
-    System.setOut(new PrintStream(outContent));
+    //System.setOut(new PrintStream(outContent));
     try {
       NativeLibraryChecker.main(args);
     } catch (ExitException e) {
@@ -77,7 +77,7 @@ public class TestNativeLibraryChecker extends TestCase {
       if (NativeCodeLoader.isNativeCodeLoaded()) {
         assertEquals(outContent.toString().indexOf("hadoop:  true") != -1, true);
       }
-      System.setOut(originalPs);
+      //System.setOut(originalPs);
     }
   }
 }

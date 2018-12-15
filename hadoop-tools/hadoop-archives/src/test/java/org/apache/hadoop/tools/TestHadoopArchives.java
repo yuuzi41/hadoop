@@ -186,7 +186,7 @@ public class TestHadoopArchives {
     PrintStream stderr = System.err;
     ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
     PrintStream newErr = new PrintStream(byteStream);
-    System.setErr(newErr);
+    //System.setErr(newErr);
 
     // fail if the archive path already exists
     createFile(archivePath, fs, harName);
@@ -210,7 +210,7 @@ public class TestHadoopArchives {
     Assert.assertTrue(output.indexOf("Destination " + archivePath2.toString()
         + " should be a directory but is a file") != -1);
 
-    System.setErr(stderr);
+    //System.setErr(stderr);
   }
 
   @Test
@@ -296,16 +296,16 @@ public class TestHadoopArchives {
     final PrintStream out = new PrintStream(bytes);
     final PrintStream oldOut = System.out;
     final PrintStream oldErr = System.err;
-    System.setOut(out);
-    System.setErr(out);
+    //System.setOut(out);
+    //System.setErr(out);
     final String results;
     try {
       Assert.assertEquals(0, shell.run(new String[] { "-lsr", dir }));
       results = bytes.toString();
     } finally {
       IOUtils.closeStream(out);
-      System.setOut(oldOut);
-      System.setErr(oldErr);
+      //System.setOut(oldOut);
+      //System.setErr(oldErr);
     }
     System.out.println("lsr results:\n" + results);
     String dirname = rootDir;

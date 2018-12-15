@@ -235,14 +235,14 @@ public class TestClusterId {
     PrintStream origErr = System.err;
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream stdErr = new PrintStream(baos);
-    System.setErr(stdErr);
+    //System.setErr(stdErr);
     try {
       NameNode.createNameNode(argv, config);
 
       // Check if usage is printed
       assertTrue(baos.toString("UTF-8").contains("Usage: hdfs namenode"));
     } finally {
-      System.setErr(origErr);
+      //System.setErr(origErr);
     }
 
     // check if the version file does not exists.
@@ -263,14 +263,14 @@ public class TestClusterId {
     PrintStream origErr = System.err;
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream stdErr = new PrintStream(baos);
-    System.setErr(stdErr);
+    //System.setErr(stdErr);
     try {
       NameNode.createNameNode(argv, config);
 
       // Check if usage is printed
       assertTrue(baos.toString("UTF-8").contains("Usage: hdfs namenode"));
     } finally {
-      System.setErr(origErr);
+      //System.setErr(origErr);
     }
 
     // check if the version file does not exists.
@@ -292,14 +292,14 @@ public class TestClusterId {
     PrintStream origErr = System.err;
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream stdErr = new PrintStream(baos);
-    System.setErr(stdErr);
+    //System.setErr(stdErr);
     try {
       NameNode.createNameNode(argv, config);
 
       // Check if usage is printed
       assertTrue(baos.toString("UTF-8").contains("Usage: hdfs namenode"));
     } finally {
-      System.setErr(origErr);
+      //System.setErr(origErr);
     }
 
     // check if the version file does not exists.

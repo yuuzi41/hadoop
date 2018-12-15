@@ -435,8 +435,8 @@ public class TestTrash extends TestCase {
       PrintStream stderr = System.err;
       ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
       PrintStream newOut = new PrintStream(byteStream);
-      System.setOut(newOut);
-      System.setErr(newOut);
+      //System.setOut(newOut);
+      //System.setErr(newOut);
       try {
         shell.run(args);
       } catch (Exception e) {
@@ -444,8 +444,8 @@ public class TestTrash extends TestCase {
             e.getLocalizedMessage());
       }
       String output = byteStream.toString();
-      System.setOut(stdout);
-      System.setErr(stderr);
+      //System.setOut(stdout);
+      //System.setErr(stderr);
       assertTrue("skipTrash wasn't suggested as remedy to failed rm command" +
           " or we deleted / even though we could not get server defaults",
           output.indexOf("Consider using -skipTrash option") != -1 ||

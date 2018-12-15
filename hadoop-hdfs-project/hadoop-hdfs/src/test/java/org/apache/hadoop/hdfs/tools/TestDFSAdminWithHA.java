@@ -93,8 +93,8 @@ public class TestDFSAdminWithHA {
     admin.setConf(conf);
     assertTrue(HAUtil.isHAEnabled(conf, "ns1"));
 
-    System.setOut(new PrintStream(out));
-    System.setErr(new PrintStream(err));
+    //System.setOut(new PrintStream(out));
+    //System.setErr(new PrintStream(err));
 
     // Reduce the number of retries to speed up the tests.
     conf.setInt(
@@ -114,8 +114,8 @@ public class TestDFSAdminWithHA {
       System.out.flush();
       System.err.flush();
     } finally {
-      System.setOut(oldOut);
-      System.setErr(oldErr);
+      //System.setOut(oldOut);
+      //System.setErr(oldErr);
     }
     if (admin != null) {
       admin.close();

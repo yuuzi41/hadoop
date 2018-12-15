@@ -136,8 +136,8 @@ public class TestRouterAdminCLI {
   @After
   public void tearDown() {
     // set back system out/err
-    System.setOut(OLD_OUT);
-    System.setErr(OLD_ERR);
+    //System.setOut(OLD_OUT);
+    //System.setErr(OLD_ERR);
   }
 
   @Test
@@ -257,7 +257,7 @@ public class TestRouterAdminCLI {
     assertEquals(0, ToolRunner.run(admin, argv));
 
     // re-set system out for testing
-    System.setOut(new PrintStream(out));
+    //System.setOut(new PrintStream(out));
     stateStore.loadCache(MountTableStoreImpl.class, true);
     argv = new String[] {"-ls", src};
     assertEquals(0, ToolRunner.run(admin, argv));
@@ -313,7 +313,7 @@ public class TestRouterAdminCLI {
 
     // remove an invalid mount table
     String invalidPath = "/invalid";
-    System.setOut(new PrintStream(out));
+    //System.setOut(new PrintStream(out));
     argv = new String[] {"-rm", invalidPath};
     assertEquals(0, ToolRunner.run(admin, argv));
     assertTrue(out.toString().contains(
@@ -370,7 +370,7 @@ public class TestRouterAdminCLI {
   @Test
   public void testMountTablePermissions() throws Exception {
     // re-set system out for testing
-    System.setOut(new PrintStream(out));
+    //System.setOut(new PrintStream(out));
     // use superuser to add new mount table with only read permission
     String[] argv = new String[] {"-add", "/testpath2-1", "ns0", "/testdir2-1",
         "-owner", TEST_USER, "-group", TEST_USER, "-mode", "0455"};
@@ -519,7 +519,7 @@ public class TestRouterAdminCLI {
         routerContext.getRouter().getRouterState());
     assertTrue(routerContext.getRouter().getSafemodeService().isInSafeMode());
 
-    System.setOut(new PrintStream(out));
+    //System.setOut(new PrintStream(out));
     assertEquals(0, ToolRunner.run(admin,
         new String[] {"-safemode", "get"}));
     assertTrue(out.toString().contains("true"));
@@ -575,7 +575,7 @@ public class TestRouterAdminCLI {
         new String[] {"-nameservice", "disable", "ns0"}));
 
     stateStore.loadCache(DisabledNameserviceStoreImpl.class, true);
-    System.setOut(new PrintStream(out));
+    //System.setOut(new PrintStream(out));
     assertEquals(0, ToolRunner.run(admin,
         new String[] {"-getDisabledNameservices"}));
     assertTrue("ns0 should be reported: " + out,
@@ -593,7 +593,7 @@ public class TestRouterAdminCLI {
         out.toString().contains("ns0"));
 
     // Wrong commands
-    System.setErr(new PrintStream(err));
+    //System.setErr(new PrintStream(err));
     assertEquals(-1, ToolRunner.run(admin,
         new String[] {"-nameservice", "enable"}));
     String msg = "Not enough parameters specificed for cmd -nameservice";
@@ -624,7 +624,7 @@ public class TestRouterAdminCLI {
 
   @Test
   public void testUpdateNonExistingMountTable() throws Exception {
-    System.setOut(new PrintStream(out));
+    //System.setOut(new PrintStream(out));
     String nsId = "ns0";
     String src = "/test-updateNonExistingMounttable";
     String dest = "/updateNonExistingMounttable";

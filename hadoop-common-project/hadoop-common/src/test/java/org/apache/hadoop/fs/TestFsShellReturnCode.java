@@ -291,7 +291,7 @@ public class TestFsShellReturnCode {
     final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
     final PrintStream out = new PrintStream(bytes);
     final PrintStream oldErr = System.err;
-    System.setErr(out);
+    //System.setErr(out);
     final String results;
     try {
       Path tdir = new Path(TEST_ROOT_DIR, "notNullCopy");
@@ -310,7 +310,7 @@ public class TestFsShellReturnCode {
       assertTrue(" Not displaying the intended message ",results.contains("get: `"+args[1]+"': No such file or directory"));
     } finally {
       IOUtils.closeStream(out);
-      System.setErr(oldErr);
+      //System.setErr(oldErr);
     }
   }
   
@@ -322,7 +322,7 @@ public class TestFsShellReturnCode {
     final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
     final PrintStream err = new PrintStream(bytes);
     final PrintStream oldErr = System.err;
-    System.setErr(err);
+    //System.setErr(err);
     final String results;
     try {
       int exit = shell.run(new String[]{"-rm", "nomatch*"});
@@ -331,7 +331,7 @@ public class TestFsShellReturnCode {
       assertTrue(results.contains("rm: `nomatch*': No such file or directory"));
     } finally {
       IOUtils.closeStream(err);
-      System.setErr(oldErr);
+      //System.setErr(oldErr);
     }
   }
 
@@ -343,14 +343,14 @@ public class TestFsShellReturnCode {
     final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
     final PrintStream err = new PrintStream(bytes);
     final PrintStream oldErr = System.err;
-    System.setErr(err);
+    //System.setErr(err);
     try {
       int exit = shell.run(new String[]{"-rm", "-f", "nomatch*"});
       assertEquals(0, exit);
       assertTrue(bytes.toString().isEmpty());
     } finally {
       IOUtils.closeStream(err);
-      System.setErr(oldErr);
+      //System.setErr(oldErr);
     }
   }
 
@@ -371,7 +371,7 @@ public class TestFsShellReturnCode {
     final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
     final PrintStream out = new PrintStream(bytes);
     final PrintStream oldErr = System.err;
-    System.setErr(out);
+    //System.setErr(out);
     final String results;
     try {
       int run = shell.run(args);
@@ -380,7 +380,7 @@ public class TestFsShellReturnCode {
       assertTrue("Return code should be 0", run == 0);
     } finally {
       IOUtils.closeStream(out);
-      System.setErr(oldErr);
+      //System.setErr(oldErr);
     }
     
   }

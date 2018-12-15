@@ -181,7 +181,7 @@ public class TestDecommissioningStatus {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     PrintStream ps = new PrintStream(baos);
     PrintStream oldOut = System.out;
-    System.setOut(ps);
+    //System.setOut(ps);
     try {
       // Parse DFSAdmin just to check the count
       admin.report(new String[] {"-decommissioning"}, 0);
@@ -216,7 +216,7 @@ public class TestDecommissioningStatus {
             decomming.contains(id));
       }
     } finally {
-      System.setOut(oldOut);
+      //System.setOut(oldOut);
     }
   }
 

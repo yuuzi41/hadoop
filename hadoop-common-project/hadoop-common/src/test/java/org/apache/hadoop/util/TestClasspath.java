@@ -65,17 +65,17 @@ public class TestClasspath {
 
     stdout = new ByteArrayOutputStream();
     printStdout = new PrintStream(stdout);
-    System.setOut(printStdout);
+    //System.setOut(printStdout);
 
     stderr = new ByteArrayOutputStream();
     printStderr = new PrintStream(stderr);
-    System.setErr(printStderr);
+    //System.setErr(printStderr);
   }
 
   @After
   public void tearDown() {
-    System.setOut(oldStdout);
-    System.setErr(oldStderr);
+    //System.setOut(oldStdout);
+    //System.setErr(oldStderr);
     IOUtils.cleanupWithLogger(LOG, printStdout, printStderr);
     assertTrue(FileUtil.fullyDelete(TEST_DIR));
   }

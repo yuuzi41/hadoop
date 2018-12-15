@@ -296,7 +296,7 @@ public class TestOfflineEditsViewer {
     final PrintStream out = new PrintStream(bytes);
     final PrintStream oldOut = System.out;
     try {
-      System.setOut(out);
+      //System.setOut(out);
       int status = new OfflineEditsViewer().run(new String[] { "-h" });
       assertTrue("" + "Exit code returned for help option is incorrect",
           status == 0);
@@ -304,7 +304,7 @@ public class TestOfflineEditsViewer {
           "Invalid Command error displayed when help option is passed.", bytes
               .toString().contains("Error parsing command-line options"));
     } finally {
-      System.setOut(oldOut);
+      //System.setOut(oldOut);
       IOUtils.closeStream(out);
     }
   }

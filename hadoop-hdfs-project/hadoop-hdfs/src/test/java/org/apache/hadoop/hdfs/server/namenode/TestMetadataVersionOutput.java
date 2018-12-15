@@ -76,7 +76,7 @@ public class TestMetadataVersionOutput {
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final PrintStream stdOut = new PrintStream(baos);
     try {
-      System.setOut(stdOut);
+      //System.setOut(stdOut);
       try {
         NameNode.createNameNode(new String[] { "-metadataVersion" }, conf);
       } catch (Exception e) {
@@ -89,7 +89,7 @@ public class TestMetadataVersionOutput {
       assertTrue(baos.toString("UTF-8").
           contains("Software format version: " + verNumStr));
     } finally {
-      System.setOut(origOut);
+      //System.setOut(origOut);
     }
   }
 }

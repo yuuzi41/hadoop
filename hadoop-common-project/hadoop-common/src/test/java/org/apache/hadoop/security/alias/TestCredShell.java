@@ -45,8 +45,8 @@ public class TestCredShell {
 
   @Before
   public void setup() throws Exception {
-    System.setOut(new PrintStream(outContent));
-    System.setErr(new PrintStream(errContent));
+    //System.setOut(new PrintStream(outContent));
+    //System.setErr(new PrintStream(errContent));
     final Path jksPath = new Path(tmpDir.toString(), "keystore.jceks");
     new File(jksPath.toString()).delete();
     jceksProvider = "jceks://file" + jksPath.toUri();

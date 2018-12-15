@@ -179,7 +179,7 @@ public class TestGridmixSubmission extends CommonJobTest {
     final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
     final PrintStream out = new PrintStream(bytes);
     final PrintStream oldOut = System.out;
-    System.setErr(out);
+    //System.setErr(out);
     ExitUtil.disableSystemExit();
     try {
       String[] argv = new String[0];
@@ -189,7 +189,7 @@ public class TestGridmixSubmission extends CommonJobTest {
       assertExceptionContains(ExitUtil.EXIT_EXCEPTION_MESSAGE, e);
       ExitUtil.resetFirstExitException();
     } finally {
-      System.setErr(oldOut);
+      //System.setErr(oldOut);
       System.setSecurityManager(securityManager);
     }
     String print = bytes.toString();

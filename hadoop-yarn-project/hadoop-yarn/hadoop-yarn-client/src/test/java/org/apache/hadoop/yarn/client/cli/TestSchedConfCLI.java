@@ -49,11 +49,11 @@ public class TestSchedConfCLI {
   public void setUp() {
     sysOutStream = new ByteArrayOutputStream();
     sysOut =  new PrintStream(sysOutStream);
-    System.setOut(sysOut);
+    //System.setOut(sysOut);
 
     sysErrStream = new ByteArrayOutputStream();
     sysErr = new PrintStream(sysErrStream);
-    System.setErr(sysErr);
+    //System.setErr(sysErr);
 
     cli = new SchedConfCLI();
   }

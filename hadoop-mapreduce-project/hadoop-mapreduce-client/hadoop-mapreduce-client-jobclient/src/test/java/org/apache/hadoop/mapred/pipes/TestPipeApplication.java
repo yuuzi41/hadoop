@@ -272,7 +272,7 @@ public class TestPipeApplication {
     ExitUtil.disableSystemExit();
     // test without parameters
     try {
-      System.setOut(new PrintStream(out));
+      //System.setOut(new PrintStream(out));
       Submitter.main(new String[0]);
       fail();
     } catch (ExitUtil.ExitException e) {
@@ -321,7 +321,7 @@ public class TestPipeApplication {
           "-archives <archive1,...>          specify a comma-separated list of "
               + "archives to be unarchived on the compute machines"));
     } finally {
-      System.setOut(oldps);
+      //System.setOut(oldps);
       // restore
       System.setSecurityManager(securityManager);
       if (psw != null) {
@@ -372,7 +372,7 @@ public class TestPipeApplication {
       assertEquals(e.status, 0);
 
     } finally {
-      System.setOut(oldps);
+      //System.setOut(oldps);
       System.setSecurityManager(securityManager);
     }
 

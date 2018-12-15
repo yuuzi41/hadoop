@@ -76,14 +76,14 @@ public class TestDebugAdmin {
     final PrintStream out = new PrintStream(bytes);
     final PrintStream oldErr = System.err;
     final PrintStream oldOut = System.out;
-    System.setErr(out);
-    System.setOut(out);
+    //System.setErr(out);
+    //System.setOut(out);
     int ret;
     try {
       ret = admin.run(cmd);
     } finally {
-      System.setErr(oldErr);
-      System.setOut(oldOut);
+      //System.setErr(oldErr);
+      //System.setOut(oldOut);
       IOUtils.closeStream(out);
     }
     return "ret: " + ret + ", " +

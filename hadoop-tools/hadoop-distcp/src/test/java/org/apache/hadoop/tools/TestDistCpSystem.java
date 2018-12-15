@@ -107,10 +107,10 @@ public class TestDistCpSystem {
     ByteArrayOutputStream baout = new ByteArrayOutputStream();
     PrintStream out = new PrintStream(baout, true);
     PrintStream old = System.out;
-    System.setOut(out);
+    //System.setOut(out);
     shell.run(args);
     out.close();
-    System.setOut(old);
+    //System.setOut(old);
     return baout.toString();
   }
   

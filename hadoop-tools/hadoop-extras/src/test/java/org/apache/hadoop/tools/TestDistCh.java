@@ -206,16 +206,16 @@ public class TestDistCh extends junit.framework.TestCase {
     final PrintStream out = new PrintStream(bytes);
     final PrintStream oldOut = System.out;
     final PrintStream oldErr = System.err;
-    System.setOut(out);
-    System.setErr(out);
+    //System.setOut(out);
+    //System.setErr(out);
     final String results;
     try {
       assertEquals(returnvalue, shell.run(new String[]{"-lsr", root}));
       results = bytes.toString();
     } finally {
       IOUtils.closeStream(out);
-      System.setOut(oldOut);
-      System.setErr(oldErr);
+      //System.setOut(oldOut);
+      //System.setErr(oldErr);
     }
     System.out.println("results:\n" + results);
     return results;

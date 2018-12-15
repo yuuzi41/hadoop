@@ -428,7 +428,7 @@ public class TestOfflineImageViewer {
     final PrintStream out = new PrintStream(bytes);
     final PrintStream oldOut = System.out;
     try {
-      System.setOut(out);
+      //System.setOut(out);
       int status = OfflineImageViewerPB.run(new String[] { "-h" });
       assertTrue("Exit code returned for help option is incorrect", status == 0);
       Assert.assertFalse(
@@ -442,7 +442,7 @@ public class TestOfflineImageViewer {
           "Exit code returned for help with other option is incorrect",
           status == -1);
     } finally {
-      System.setOut(oldOut);
+      //System.setOut(oldOut);
       IOUtils.closeStream(out);
     }
   }
@@ -637,7 +637,7 @@ public class TestOfflineImageViewer {
     final PrintStream out = new PrintStream(bytes);
     final PrintStream oldOut = System.out;
     try {
-      System.setOut(out);
+      //System.setOut(out);
       // Add the -h option to make the test only for option parsing,
       // and don't need to do the following operations.
       OfflineImageViewer.main(new String[] {"-i", "-", "-o", "-", "-p",
@@ -645,7 +645,7 @@ public class TestOfflineImageViewer {
       Assert.assertFalse(bytes.toString().contains(
           "Error parsing command-line options: "));
     } finally {
-      System.setOut(oldOut);
+      //System.setOut(oldOut);
       IOUtils.closeStream(out);
     }
   }
@@ -656,7 +656,7 @@ public class TestOfflineImageViewer {
     final PrintStream out = new PrintStream(bytes);
     final PrintStream oldOut = System.out;
     try {
-      System.setOut(out);
+      //System.setOut(out);
       int status =
           OfflineImageViewerPB.run(new String[] {"-i",
               originalFsimage.getAbsolutePath(), "-o", "-", "-p",
@@ -665,7 +665,7 @@ public class TestOfflineImageViewer {
       assertEquals(0, status);
       Assert.assertTrue(bytes.toString().contains("(0 B, 8 B]"));
     } finally {
-      System.setOut(oldOut);
+      //System.setOut(oldOut);
       IOUtils.closeStream(out);
     }
   }

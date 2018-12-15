@@ -379,7 +379,7 @@ public class TestRMAdminCLI {
         new String[] {"group1", "group2"});
     PrintStream origOut = System.out;
     PrintStream out = mock(PrintStream.class);
-    System.setOut(out);
+    //System.setOut(out);
     try {
       String[] args = { "-getGroups", "admin" };
       assertEquals(0, rmAdminCLI.run(args));
@@ -391,7 +391,7 @@ public class TestRMAdminCLI {
         }
       }));
     } finally {
-      System.setOut(origOut);
+      //System.setOut(origOut);
     }
   }
 
@@ -488,8 +488,8 @@ public class TestRMAdminCLI {
     PrintStream oldErrPrintStream = System.err;
     ByteArrayOutputStream dataOut = new ByteArrayOutputStream();
     ByteArrayOutputStream dataErr = new ByteArrayOutputStream();
-    System.setOut(new PrintStream(dataOut));
-    System.setErr(new PrintStream(dataErr));
+    //System.setOut(new PrintStream(dataOut));
+    //System.setErr(new PrintStream(dataErr));
     try {
       String[] args = { "-help" };
       assertEquals(0, rmAdminCLI.run(args));
@@ -619,8 +619,8 @@ public class TestRMAdminCLI {
           "messages: %n" + expectedHelpMsg), actualHelpMsg.contains(expectedHelpMsg
               ));
     } finally {
-      System.setOut(oldOutPrintStream);
-      System.setErr(oldErrPrintStream);
+      //System.setOut(oldOutPrintStream);
+      //System.setErr(oldErrPrintStream);
     }
   }
 
@@ -628,7 +628,7 @@ public class TestRMAdminCLI {
   public void testException() throws Exception {
     PrintStream oldErrPrintStream = System.err;
     ByteArrayOutputStream dataErr = new ByteArrayOutputStream();
-    System.setErr(new PrintStream(dataErr));
+    //System.setErr(new PrintStream(dataErr));
     try {
       when(admin.refreshQueues(any(RefreshQueuesRequest.class)))
           .thenThrow(new IOException("test exception"));
@@ -638,7 +638,7 @@ public class TestRMAdminCLI {
       verify(admin).refreshQueues(any(RefreshQueuesRequest.class));
       assertTrue(dataErr.toString().contains("refreshQueues: test exception"));
     } finally {
-      System.setErr(oldErrPrintStream);
+      //System.setErr(oldErrPrintStream);
     }
   }
   

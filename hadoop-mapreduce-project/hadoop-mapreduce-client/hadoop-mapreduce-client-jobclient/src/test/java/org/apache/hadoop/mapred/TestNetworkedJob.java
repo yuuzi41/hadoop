@@ -325,13 +325,13 @@ public class TestNetworkedJob {
       JobQueueClient jobClient = new JobQueueClient(job);
 
       ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-      System.setOut(new PrintStream(bytes));
+      //System.setOut(new PrintStream(bytes));
       String[] arg = { "-list" };
       jobClient.run(arg);
       assertTrue(bytes.toString().contains("Queue Name : default"));
       assertTrue(bytes.toString().contains("Queue State : running"));
       bytes = new ByteArrayOutputStream();
-      System.setOut(new PrintStream(bytes));
+      //System.setOut(new PrintStream(bytes));
       String[] arg1 = { "-showacls" };
       jobClient.run(arg1);
       assertTrue(bytes.toString().contains("Queue acls for user :"));
@@ -343,7 +343,7 @@ public class TestNetworkedJob {
       // test for info and default queue
 
       bytes = new ByteArrayOutputStream();
-      System.setOut(new PrintStream(bytes));
+      //System.setOut(new PrintStream(bytes));
       String[] arg2 = { "-info", "default" };
       jobClient.run(arg2);
       assertTrue(bytes.toString().contains("Queue Name : default"));
@@ -352,7 +352,7 @@ public class TestNetworkedJob {
 
       // test for info , default queue and jobs
       bytes = new ByteArrayOutputStream();
-      System.setOut(new PrintStream(bytes));
+      //System.setOut(new PrintStream(bytes));
       String[] arg3 = { "-info", "default", "-showJobs" };
       jobClient.run(arg3);
       assertTrue(bytes.toString().contains("Queue Name : default"));
@@ -365,7 +365,7 @@ public class TestNetworkedJob {
 
       
     } finally {
-      System.setOut(oldOut);
+      //System.setOut(oldOut);
       if (fileSys != null) {
         fileSys.delete(testDir, true);
       }

@@ -110,7 +110,7 @@ public class TestYarnCLI {
     sysOut = spy(new PrintStream(sysOutStream));
     sysErrStream = new ByteArrayOutputStream();
     sysErr = spy(new PrintStream(sysErrStream));
-    System.setOut(sysOut);
+    //System.setOut(sysOut);
   }
   
   @Test

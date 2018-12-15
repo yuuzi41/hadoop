@@ -44,7 +44,7 @@ public class TestRegistryCli extends AbstractRegistryTest {
     sysOut = new PrintStream(sysOutStream);
     sysErrStream = new ByteArrayOutputStream();
     sysErr = new PrintStream(sysErrStream);
-    System.setOut(sysOut);
+    //System.setOut(sysOut);
     cli = new RegistryCli(operations, createRegistryConfiguration(), sysOut, sysErr);
   }
 

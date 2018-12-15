@@ -110,9 +110,9 @@ public class TestTools {
       PipedOutputStream pipeOut = new PipedOutputStream();
       PipedInputStream pipeIn = new PipedInputStream(pipeOut, PIPE_BUFFER_SIZE);
       if (out == System.out) {
-        System.setOut(new PrintStream(pipeOut));
+        //System.setOut(new PrintStream(pipeOut));
       } else if (out == System.err) {
-        System.setErr(new PrintStream(pipeOut));
+        //System.setErr(new PrintStream(pipeOut));
       }
 
       if (clazz == DelegationTokenFetcher.class) {
@@ -129,8 +129,8 @@ public class TestTools {
     } catch (Exception ex) {
       fail("checkOutput error " + ex);
     } finally {
-      System.setOut(oldOut);
-      System.setErr(oldErr);
+      //System.setOut(oldOut);
+      //System.setErr(oldErr);
     }
   }
 

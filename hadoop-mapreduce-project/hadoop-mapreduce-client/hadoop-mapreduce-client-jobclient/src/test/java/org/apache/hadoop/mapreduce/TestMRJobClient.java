@@ -95,10 +95,10 @@ public class TestMRJobClient extends ClusterMapReduceTestCase {
     PrintStream oldOut = System.out;
     PrintStream newOut = new PrintStream(out, true);
     try {
-      System.setOut(newOut);
+      //System.setOut(newOut);
       return ToolRunner.run(conf, tool, args);
     } finally {
-      System.setOut(oldOut);
+      //System.setOut(oldOut);
     }
   }
 
@@ -265,7 +265,7 @@ public class TestMRJobClient extends ClusterMapReduceTestCase {
   private void startStop() {
     ByteArrayOutputStream data = new ByteArrayOutputStream();
     PrintStream error = System.err;
-    System.setErr(new PrintStream(data));
+    //System.setErr(new PrintStream(data));
     ExitUtil.disableSystemExit();
     try {
       CLI.main(new String[0]);
@@ -277,7 +277,7 @@ public class TestMRJobClient extends ClusterMapReduceTestCase {
     } catch (Exception e) {
 
     } finally {
-      System.setErr(error);
+      //System.setErr(error);
     }
     // in console should be written help text 
     String s = new String(data.toByteArray());

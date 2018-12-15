@@ -1706,16 +1706,16 @@ public class DFSTestUtil {
     try {
       ByteArrayOutputStream bs = new ByteArrayOutputStream(1024);
       try (PrintStream out = new PrintStream(bs)) {
-        System.setOut(out);
-        System.setErr(out);
+        //System.setOut(out);
+        //System.setErr(out);
         ret = tool.run(cmds);
         System.out.flush();
         System.err.flush();
       }
       output = bs.toString();
     } finally {
-      System.setOut(origOut);
-      System.setErr(origErr);
+      //System.setOut(origOut);
+      //System.setErr(origErr);
     }
     System.out.println("Output for command: " + cmd + " retcode: " + ret);
     if (output != null) {

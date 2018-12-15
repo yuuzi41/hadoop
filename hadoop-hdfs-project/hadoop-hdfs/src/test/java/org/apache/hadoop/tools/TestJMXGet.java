@@ -143,7 +143,7 @@ public class TestJMXGet {
     PipedOutputStream pipeOut = new PipedOutputStream();
     PipedInputStream pipeIn = new PipedInputStream(pipeOut, 1024 * 1024);
     PrintStream oldErr = System.err;
-    System.setErr(new PrintStream(pipeOut));
+    //System.setErr(new PrintStream(pipeOut));
     try {
       jmx.printAllValues();
       if ((size = pipeIn.available()) != 0) {
@@ -153,7 +153,7 @@ public class TestJMXGet {
       pipeOut.close();
       pipeIn.close();
     } finally {
-      System.setErr(oldErr);
+      //System.setErr(oldErr);
     }
     return bytes != null ? new String(bytes).contains(pattern) : false;
   }

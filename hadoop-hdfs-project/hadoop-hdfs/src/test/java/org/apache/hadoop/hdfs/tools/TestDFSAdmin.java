@@ -105,8 +105,8 @@ public class TestDFSAdmin {
   }
 
   private void redirectStream() {
-    System.setOut(new PrintStream(out));
-    System.setErr(new PrintStream(err));
+    //System.setOut(new PrintStream(out));
+    //System.setErr(new PrintStream(err));
   }
 
   private void resetStream() {
@@ -120,8 +120,8 @@ public class TestDFSAdmin {
       System.out.flush();
       System.err.flush();
     } finally {
-      System.setOut(OLD_OUT);
-      System.setErr(OLD_ERR);
+      //System.setOut(OLD_OUT);
+      //System.setErr(OLD_ERR);
     }
 
     if (cluster != null) {

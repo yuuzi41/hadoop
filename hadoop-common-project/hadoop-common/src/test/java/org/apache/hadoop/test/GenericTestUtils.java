@@ -427,7 +427,7 @@ public abstract class GenericTestUtils {
       bytes = new ByteArrayOutputStream();
       bytesPrintStream = new PrintStream(bytes);
       oldErr = System.err;
-      System.setErr(new TeePrintStream(oldErr, bytesPrintStream));
+      //System.setErr(new TeePrintStream(oldErr, bytesPrintStream));
     }
 
     public String getOutput() {
@@ -437,7 +437,7 @@ public abstract class GenericTestUtils {
     @Override
     public void close() throws Exception {
       IOUtils.closeQuietly(bytesPrintStream);
-      System.setErr(oldErr);
+      //System.setErr(oldErr);
     }
   }
 

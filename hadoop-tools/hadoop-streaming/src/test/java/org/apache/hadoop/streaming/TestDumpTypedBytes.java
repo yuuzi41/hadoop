@@ -45,7 +45,7 @@ public class TestDumpTypedBytes {
     PrintStream psBackup = System.out;
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     PrintStream psOut = new PrintStream(out);
-    System.setOut(psOut);
+    //System.setOut(psOut);
     DumpTypedBytes dumptb = new DumpTypedBytes(conf);
 
     try {
@@ -86,7 +86,7 @@ public class TestDumpTypedBytes {
         fs.close();
       } catch (Exception e) {
       }
-      System.setOut(psBackup);
+      //System.setOut(psBackup);
       cluster.shutdown();
     }
   }

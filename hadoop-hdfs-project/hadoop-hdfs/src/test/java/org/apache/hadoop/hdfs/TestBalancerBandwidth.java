@@ -120,7 +120,7 @@ public class TestBalancerBandwidth {
     PrintStream initialStdOut = System.out;
     outContent.reset();
     try {
-      System.setOut(outStream);
+      //System.setOut(outStream);
       int exitCode = admin.run(args);
       assertEquals("DFSAdmin should return 0", 0, exitCode);
       String bandwidthOutMsg = "Balancer bandwidth is " + expectedBandwidth
@@ -128,7 +128,7 @@ public class TestBalancerBandwidth {
       String strOut = new String(outContent.toByteArray(), UTF8);
       assertTrue("Wrong balancer bandwidth!", strOut.contains(bandwidthOutMsg));
     } finally {
-      System.setOut(initialStdOut);
+      //System.setOut(initialStdOut);
     }
   }
 

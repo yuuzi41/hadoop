@@ -99,11 +99,11 @@ public class TestLogsCLI {
   public void setUp() {
     sysOutStream = new ByteArrayOutputStream();
     sysOut =  new PrintStream(sysOutStream);
-    System.setOut(sysOut);
+    //System.setOut(sysOut);
 
     sysErrStream = new ByteArrayOutputStream();
     sysErr = new PrintStream(sysErrStream);
-    System.setErr(sysErr);
+    //System.setErr(sysErr);
   }
 
   @Test(timeout = 5000l)

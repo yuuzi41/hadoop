@@ -51,8 +51,8 @@ public class TestTraceAdmin extends SaslDataTransferTestCase {
     PrintStream ps = new PrintStream(baos);
     PrintStream oldStdout = System.out;
     PrintStream oldStderr = System.err;
-    System.setOut(ps);
-    System.setErr(ps);
+    //System.setOut(ps);
+    //System.setErr(ps);
     int ret = -1;
     try {
       ret = trace.run(cmd);
@@ -60,8 +60,8 @@ public class TestTraceAdmin extends SaslDataTransferTestCase {
       try {
         System.out.flush();
       } finally {
-        System.setOut(oldStdout);
-        System.setErr(oldStderr);
+        //System.setOut(oldStdout);
+        //System.setErr(oldStderr);
       }
     }
     return "ret:" + ret + ", " + baos.toString();

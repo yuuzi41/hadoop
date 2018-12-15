@@ -58,14 +58,14 @@ public class TestKeyShell {
     jceksProvider = "jceks://file" + jksPath.toUri();
     initialStdOut = System.out;
     initialStdErr = System.err;
-    System.setOut(new PrintStream(outContent));
-    System.setErr(new PrintStream(errContent));
+    //System.setOut(new PrintStream(outContent));
+    //System.setErr(new PrintStream(errContent));
   }
 
   @After
   public void cleanUp() throws Exception {
-    System.setOut(initialStdOut);
-    System.setErr(initialStdErr);
+    //System.setOut(initialStdOut);
+    //System.setErr(initialStdErr);
   }
 
   /**

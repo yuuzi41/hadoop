@@ -212,8 +212,8 @@ public class TestSnapshotFileLength {
     PrintStream outBackup = System.out;
     PrintStream errBackup = System.err;
     ByteArrayOutputStream bao = new ByteArrayOutputStream();
-    System.setOut(new PrintStream(bao));
-    System.setErr(new PrintStream(bao));
+    //System.setOut(new PrintStream(bao));
+    //System.setErr(new PrintStream(bao));
     // Make sure we can cat the file upto to snapshot length
     FsShell shell = new FsShell();
     try {
@@ -221,8 +221,8 @@ public class TestSnapshotFileLength {
       "/TestSnapshotFileLength/sub1/.snapshot/snapshot1/file1" });
       assertEquals("Unexpected # bytes from -cat", BLOCKSIZE, bao.size());
     } finally {
-      System.setOut(outBackup);
-      System.setErr(errBackup);
+      //System.setOut(outBackup);
+      //System.setErr(errBackup);
     }
   }
 }

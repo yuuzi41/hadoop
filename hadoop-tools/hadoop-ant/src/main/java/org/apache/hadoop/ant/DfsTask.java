@@ -148,8 +148,8 @@ public class DfsTask extends Task {
     antOut = System.out;
     antErr = System.err;
     try {
-      System.setOut(new PrintStream(out, false, "UTF-8"));
-      System.setErr(out == err ?
+      //System.setOut(new PrintStream(out, false, "UTF-8"));
+      //System.setErr(out == err ?
           System.out : new PrintStream(err, false, "UTF-8"));
     } catch (UnsupportedEncodingException ignored) {
     }
@@ -167,8 +167,8 @@ public class DfsTask extends Task {
     if (out != err && errprop != null && !System.err.checkError())
       getProject().setNewProperty(errprop, err.toString());
 
-    System.setErr(antErr);
-    System.setOut(antOut);
+    //System.setErr(antErr);
+    //System.setOut(antOut);
     confloader.cleanup();
     confloader.setParent(null);
   }

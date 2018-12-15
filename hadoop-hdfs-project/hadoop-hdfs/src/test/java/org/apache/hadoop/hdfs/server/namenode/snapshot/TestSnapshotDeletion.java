@@ -1052,8 +1052,8 @@ public class TestSnapshotDeletion {
     PrintStream oldOut = System.out;
     PrintStream oldErr = System.err;
     try {
-      System.setOut(psOut);
-      System.setErr(psOut);
+      //System.setOut(psOut);
+      //System.setErr(psOut);
       FsShell shell = new FsShell();
       shell.setConf(conf);
 
@@ -1072,8 +1072,8 @@ public class TestSnapshotDeletion {
       psOut.close();
       out.close();
     } finally {
-      System.setOut(oldOut);
-      System.setErr(oldErr);
+      //System.setOut(oldOut);
+      //System.setErr(oldErr);
     }
   }
 

@@ -71,8 +71,8 @@ public abstract class CommandExecutor {
     PrintStream origOut = System.out;
     PrintStream origErr = System.err;
     
-    System.setOut(new PrintStream(bao));
-    System.setErr(new PrintStream(bao));
+    //System.setOut(new PrintStream(bao));
+    //System.setErr(new PrintStream(bao));
     
     try {
       exitCode = execute(cmd);
@@ -81,8 +81,8 @@ public abstract class CommandExecutor {
       lastException = e;
       exitCode = -1;
     } finally {
-      System.setOut(origOut);
-      System.setErr(origErr);
+      //System.setOut(origOut);
+      //System.setErr(origErr);
     }
     return new Result(bao.toString(), exitCode, lastException, cmd);
   }
