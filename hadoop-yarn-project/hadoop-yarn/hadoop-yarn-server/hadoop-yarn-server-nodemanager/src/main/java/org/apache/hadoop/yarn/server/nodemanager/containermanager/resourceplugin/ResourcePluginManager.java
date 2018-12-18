@@ -29,6 +29,7 @@ import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 import org.apache.hadoop.yarn.server.nodemanager.Context;
 import org.apache.hadoop.yarn.server.nodemanager.api.deviceplugin.DevicePlugin;
+import org.apache.hadoop.yarn.server.nodemanager.api.deviceplugin.DevicePluginScheduler;
 import org.apache.hadoop.yarn.server.nodemanager.api.deviceplugin.DeviceRegisterRequest;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.resourceplugin.deviceframework.DeviceMappingManager;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.resourceplugin.deviceframework.DevicePluginAdapter;
@@ -39,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,6 +69,12 @@ public class ResourcePluginManager {
     Map<String, ResourcePlugin> pluginMap = new HashMap<>();
 
     String[] plugins = conf.getStrings(YarnConfiguration.NM_RESOURCE_PLUGINS);
+    if (plugins == null || plugins.length == 0) {
+      LOG.info("No Resource plugins found from configuration!");
+    }
+    LOG.info("Found Resource plugins from configuration: "
+        + Arrays.toString(plugins));
+
     if (plugins != null) {
       // Initialize each plugins
       for (String resourceName : plugins) {
@@ -75,23 +83,21 @@ public class ResourcePluginManager {
           String msg =
               "Trying to initialize resource plugin with name=" + resourceName
                   + ", it is not supported, list of supported plugins:"
-                  + StringUtils.join(",",
-                  SUPPORTED_RESOURCE_PLUGINS);
+                  + StringUtils.join(",", SUPPORTED_RESOURCE_PLUGINS);
           LOG.error(msg);
           throw new YarnException(msg);
         }
 
         if (pluginMap.containsKey(resourceName)) {
-          // Duplicated items, ignore ...
+          LOG.warn("Ignoring duplicate Resource plugin definition: " +
+              resourceName);
           continue;
         }
 
         ResourcePlugin plugin = null;
         if (resourceName.equals(GPU_URI)) {
           plugin = new GpuResourcePlugin();
-        }
-
-        if (resourceName.equals(FPGA_URI)) {
+        } else if (resourceName.equals(FPGA_URI)) {
           plugin = new FpgaResourcePlugin();
         }
 
@@ -101,6 +107,7 @@ public class ResourcePluginManager {
                   + " should be loaded and initialized");
         }
         plugin.initialize(context);
+        LOG.info("Initialized plugin {}", plugin);
         pluginMap.put(resourceName, plugin);
       }
     }
@@ -123,9 +130,12 @@ public class ResourcePluginManager {
       Configuration configuration,
       Map<String, ResourcePlugin> pluginMap)
       throws YarnRuntimeException, ClassNotFoundException {
-    LOG.info("The pluggable device framework enabled," +
-        "trying to load the vendor plugins");
-    deviceMappingManager = new DeviceMappingManager(context);
+    LOG.info("The pluggable device framework enabled,"
+        + "trying to load the vendor plugins");
+    if (null == deviceMappingManager) {
+      LOG.debug("DeviceMappingManager initialized.");
+      deviceMappingManager = new DeviceMappingManager(context);
+    }
     String[] pluginClassNames = configuration.getStrings(
         YarnConfiguration.NM_PLUGGABLE_DEVICE_FRAMEWORK_DEVICE_CLASSES);
     if (null == pluginClassNames) {
@@ -187,6 +197,19 @@ public class ResourcePluginManager {
       LOG.info("Adapter of {} init success!", pluginClassName);
       // Store plugin as adapter instance
       pluginMap.put(request.getResourceName(), pluginAdapter);
+      // If the device plugin implements DevicePluginScheduler interface
+      if (dpInstance instanceof DevicePluginScheduler) {
+        // check DevicePluginScheduler interface compatibility
+        checkInterfaceCompatibility(DevicePluginScheduler.class, pluginClazz);
+        LOG.info(
+            "{} can schedule {} devices."
+                + "Added as preferred device plugin scheduler",
+            pluginClassName,
+            resourceName);
+        deviceMappingManager.addDevicePluginScheduler(
+            resourceName,
+            (DevicePluginScheduler) dpInstance);
+      }
     } // end for
   }
 
@@ -235,6 +258,12 @@ public class ResourcePluginManager {
       return false;
     }
     return true;
+  }
+
+  @VisibleForTesting
+  public void setDeviceMappingManager(
+      DeviceMappingManager deviceMappingManager) {
+    this.deviceMappingManager = deviceMappingManager;
   }
 
   public DeviceMappingManager getDeviceMappingManager() {

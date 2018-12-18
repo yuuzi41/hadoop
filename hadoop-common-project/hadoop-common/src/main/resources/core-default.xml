@@ -371,6 +371,16 @@
 </property>
 
 <property>
+  <name>hadoop.security.group.mapping.ldap.bind.password.alias</name>
+  <value></value>
+  <description>
+    The alias of the bind user to be used to get the password from credential
+    providers. If the alias is empty, property
+    hadoop.security.group.mapping.ldap.bind.password is used instead.
+  </description>
+</property>
+
+<property>
   <name>hadoop.security.group.mapping.ldap.bind.password.file</name>
   <value></value>
   <description>
@@ -2407,9 +2417,10 @@
 
 <property>
   <name>hadoop.ssl.enabled.protocols</name>
-  <value>TLSv1,SSLv2Hello,TLSv1.1,TLSv1.2</value>
+  <value>TLSv1.1,TLSv1.2</value>
   <description>
-    The supported SSL protocols.
+    The supported SSL protocols. The parameter will only used from
+    DatanodeHttpServer.
   </description>
 </property>
 

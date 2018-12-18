@@ -28,11 +28,14 @@ public interface Codec<T> {
 
   /**
    * Convert object to raw persisted format.
+   * @param object The original java object. Should not be null.
    */
   byte[] toPersistedFormat(T object);
 
   /**
    * Convert object from raw persisted format.
+   *
+   * @param rawData Byte array from the key/value store. Should not be null.
    */
   T fromPersistedFormat(byte[] rawData);
 }
