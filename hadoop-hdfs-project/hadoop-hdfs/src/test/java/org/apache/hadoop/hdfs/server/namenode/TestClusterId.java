@@ -51,6 +51,7 @@ import org.apache.hadoop.util.ExitUtil;
 import org.apache.hadoop.util.ExitUtil.ExitException;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class TestClusterId {
@@ -391,6 +392,7 @@ public class TestClusterId {
    * @throws InterruptedException
    */
   @Test
+  @Ignore
   public void testFormatWithoutForceEnterYes() throws IOException,
       InterruptedException {
 

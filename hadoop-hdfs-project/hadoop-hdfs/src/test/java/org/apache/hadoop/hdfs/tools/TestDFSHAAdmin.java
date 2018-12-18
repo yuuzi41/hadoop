@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
 
 import org.apache.commons.logging.Log;
@@ -227,6 +228,8 @@ public class TestDFSHAAdmin {
     assertEquals(0, runTool("-transitionToActive", "-forcemanual", "nn1"));
     setupConfirmationOnSystemIn();
     assertEquals(0, runTool("-transitionToStandby", "-forcemanual", "nn1"));
+    undoSystemIn();
+    
 
     Mockito.verify(mockProtocol, Mockito.times(1)).transitionToActive(
         reqInfoCaptor.capture());
@@ -243,9 +246,15 @@ public class TestDFSHAAdmin {
    * Setup System.in with a stream that feeds a "yes" answer on the
    * next prompt.
    */
+  private static InputStream oldIn;
   private static void setupConfirmationOnSystemIn() {
    // Answer "yes" to the prompt about transition to active
+    oldIn = System.in;
    System.setIn(new ByteArrayInputStream("yes\n".getBytes()));
+  }
+  
+  private static void undoSystemIn() {
+    System.setIn(oldIn);
   }
 
   /**
