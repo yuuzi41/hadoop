@@ -19,6 +19,7 @@ package org.apache.hadoop.ozone.om;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -31,6 +32,10 @@ import org.apache.hadoop.hdds.scm.container.common.helpers.AllocatedBlock;
 import org.apache.hadoop.hdds.scm.exceptions.SCMException;
 import org.apache.hadoop.hdds.scm.protocol.ScmBlockLocationProtocol;
 import org.apache.hadoop.hdfs.DFSUtil;
+import org.apache.hadoop.ipc.Server;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.BlockTokenSecretProto.AccessModeProto;
+import org.apache.hadoop.ozone.security.OzoneBlockTokenSecretManager;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.ozone.common.BlockGroup;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes;
@@ -47,6 +52,9 @@ import org.apache.hadoop.utils.db.BatchOperation;
 import org.apache.hadoop.utils.db.DBStore;
 
 import com.google.common.base.Preconditions;
+
+import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_GRPC_BLOCK_TOKEN_ENABLED;
+import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_GRPC_BLOCK_TOKEN_ENABLED_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.DFS_CONTAINER_RATIS_ENABLED_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.DFS_CONTAINER_RATIS_ENABLED_KEY;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_BLOCK_DELETING_SERVICE_INTERVAL;
@@ -57,6 +65,7 @@ import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_KEY_PREALLOCATION_MA
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_KEY_PREALLOCATION_MAXSIZE_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE_DEFAULT;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,13 +86,14 @@ public class KeyManagerImpl implements KeyManager {
 
   private final long preallocateMax;
   private final String omId;
+  private final OzoneBlockTokenSecretManager secretManager;
+  private final boolean grpcBlockTokenEnabled;
 
   private BackgroundService keyDeletingService;
 
   public KeyManagerImpl(ScmBlockLocationProtocol scmBlockClient,
-      OMMetadataManager metadataManager,
-      OzoneConfiguration conf,
-      String omId) {
+      OMMetadataManager metadataManager, OzoneConfiguration conf, String omId,
+      OzoneBlockTokenSecretManager secretManager) {
     this.scmBlockClient = scmBlockClient;
     this.metadataManager = metadataManager;
     this.scmBlockSize = (long) conf
@@ -96,6 +106,10 @@ public class KeyManagerImpl implements KeyManager {
         OZONE_KEY_PREALLOCATION_MAXSIZE_DEFAULT);
     this.omId = omId;
     start(conf);
+    this.secretManager = secretManager;
+    this.grpcBlockTokenEnabled = conf.getBoolean(
+        HDDS_GRPC_BLOCK_TOKEN_ENABLED,
+        HDDS_GRPC_BLOCK_TOKEN_ENABLED_DEFAULT);
   }
 
   @Override
@@ -174,11 +188,18 @@ public class KeyManagerImpl implements KeyManager {
       }
       throw ex;
     }
-    OmKeyLocationInfo info = new OmKeyLocationInfo.Builder()
+    OmKeyLocationInfo.Builder builder = new OmKeyLocationInfo.Builder()
         .setBlockID(new BlockID(allocatedBlock.getBlockID()))
         .setLength(scmBlockSize)
-        .setOffset(0)
-        .build();
+        .setOffset(0);
+    if (grpcBlockTokenEnabled) {
+      String remoteUser = getRemoteUser().getShortUserName();
+      builder.setToken(secretManager.generateToken(remoteUser,
+          allocatedBlock.getBlockID().toString(),
+          getAclForUser(remoteUser),
+          scmBlockSize));
+    }
+    OmKeyLocationInfo info = builder.build();
     // current version not committed, so new blocks coming now are added to
     // the same version
     keyInfo.appendNewBlocks(Collections.singletonList(info));
@@ -186,6 +207,24 @@ public class KeyManagerImpl implements KeyManager {
     metadataManager.getOpenKeyTable().put(openKey,
         keyInfo.getProtobuf().toByteArray());
     return info;
+  }
+
+  /* Optimize ugi lookup for RPC operations to avoid a trip through
+   * UGI.getCurrentUser which is synch'ed.
+   */
+  public static UserGroupInformation getRemoteUser() throws IOException {
+    UserGroupInformation ugi = Server.getRemoteUser();
+    return (ugi != null) ? ugi : UserGroupInformation.getCurrentUser();
+  }
+
+  /**
+   * Return acl for user.
+   * @param user
+   *
+   * */
+  private EnumSet<AccessModeProto> getAclForUser(String user) {
+    // TODO: Return correct acl for user.
+    return EnumSet.allOf(AccessModeProto.class);
   }
 
   @Override
@@ -237,11 +276,19 @@ public class KeyManagerImpl implements KeyManager {
           }
           throw ex;
         }
-        OmKeyLocationInfo subKeyInfo = new OmKeyLocationInfo.Builder()
+        OmKeyLocationInfo.Builder builder = new OmKeyLocationInfo.Builder()
             .setBlockID(new BlockID(allocatedBlock.getBlockID()))
             .setLength(allocateSize)
-            .setOffset(0)
-            .build();
+            .setOffset(0);
+        if (grpcBlockTokenEnabled) {
+          String remoteUser = getRemoteUser().getShortUserName();
+          builder.setToken(secretManager.generateToken(remoteUser,
+              allocatedBlock.getBlockID().toString(),
+              getAclForUser(remoteUser),
+              scmBlockSize));
+        }
+
+        OmKeyLocationInfo subKeyInfo = builder.build();
         locations.add(subKeyInfo);
         requestedSize -= allocateSize;
       }
@@ -370,7 +417,20 @@ public class KeyManagerImpl implements KeyManager {
         throw new OMException("Key not found",
             OMException.ResultCodes.FAILED_KEY_NOT_FOUND);
       }
-      return OmKeyInfo.getFromProtobuf(KeyInfo.parseFrom(value));
+      OmKeyInfo omKeyInfo = OmKeyInfo.getFromProtobuf(KeyInfo.parseFrom(
+          value));
+      if (grpcBlockTokenEnabled) {
+        String remoteUser = getRemoteUser().getShortUserName();
+        for (OmKeyLocationInfoGroup key : omKeyInfo.getKeyLocationVersions()) {
+          key.getLocationList().forEach(k -> {
+            k.setToken(secretManager.generateToken(remoteUser,
+                k.getBlockID().getContainerBlockID().toString(),
+                getAclForUser(remoteUser),
+                k.getLength()));
+          });
+        }
+      }
+      return omKeyInfo;
     } catch (IOException ex) {
       LOG.debug("Get key failed for volume:{} bucket:{} key:{}",
           volumeName, bucketName, keyName, ex);

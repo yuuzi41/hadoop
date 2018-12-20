@@ -92,8 +92,7 @@ public class TestOzoneRpcClient {
   private static StorageContainerLocationProtocolClientSideTranslatorPB
       storageContainerLocationClient;
 
-  private static final String SCM_ID = UUID.randomUUID().toString();
-
+  private static String scmId = UUID.randomUUID().toString();
   /**
    * Create a MiniOzoneCluster for testing.
    * <p>
@@ -107,7 +106,7 @@ public class TestOzoneRpcClient {
     conf.setInt(ScmConfigKeys.OZONE_SCM_CONTAINER_PROVISION_BATCH_SIZE, 1);
     cluster = MiniOzoneCluster.newBuilder(conf)
         .setNumDatanodes(10)
-        .setScmId(SCM_ID)
+        .setScmId(scmId)
         .build();
     cluster.waitForClusterToBeReady();
     ozClient = OzoneClientFactory.getRpcClient(conf);
@@ -899,7 +898,7 @@ public class TestOzoneRpcClient {
     String containreBaseDir = container.getContainerData().getVolume()
         .getHddsRootDir().getPath();
     File chunksLocationPath = KeyValueContainerLocationUtil
-        .getChunksLocationPath(containreBaseDir, SCM_ID, containerID);
+        .getChunksLocationPath(containreBaseDir, scmId, containerID);
     File chunkFile = new File(chunksLocationPath, chunkName);
 
     // Corrupt the contents of the chunk file
@@ -1275,6 +1274,33 @@ public class TestOzoneRpcClient {
     if (cluster != null) {
       cluster.shutdown();
     }
+  }
+
+  public static void setCluster(MiniOzoneCluster cluster) {
+    TestOzoneRpcClient.cluster = cluster;
+  }
+
+  public static void setOzClient(OzoneClient ozClient) {
+    TestOzoneRpcClient.ozClient = ozClient;
+  }
+
+  public static void setStore(ObjectStore store) {
+    TestOzoneRpcClient.store = store;
+  }
+
+  public static void setOzoneManager(OzoneManager ozoneManager) {
+    TestOzoneRpcClient.ozoneManager = ozoneManager;
+  }
+
+  public static void setStorageContainerLocationClient(
+      StorageContainerLocationProtocolClientSideTranslatorPB
+          storageContainerLocationClient) {
+    TestOzoneRpcClient.storageContainerLocationClient =
+        storageContainerLocationClient;
+  }
+
+  protected static void setScmId(String id) {
+    scmId = id;
   }
 
 }

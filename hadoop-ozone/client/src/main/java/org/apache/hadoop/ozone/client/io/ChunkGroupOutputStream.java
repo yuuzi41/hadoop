@@ -21,7 +21,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.fs.FSExceptionMessages;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result;
-import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerNotOpenException;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
 import org.apache.hadoop.ozone.common.Checksum;
@@ -39,7 +38,7 @@ import org.apache.hadoop.hdds.scm.container.common.helpers
     .StorageContainerException;
 import org.apache.hadoop.hdds.scm.protocolPB
     .StorageContainerLocationProtocolClientSideTranslatorPB;
-import org.apache.hadoop.hdds.scm.storage.ChunkOutputStream;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.ratis.protocol.RaftRetryFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,12 +132,13 @@ public class ChunkGroupOutputStream extends OutputStream {
     List<OmKeyLocationInfo> locationInfoList = new ArrayList<>();
     for (ChunkOutputStreamEntry streamEntry : streamEntries) {
       OmKeyLocationInfo info =
-          new OmKeyLocationInfo.Builder().setBlockID(streamEntry.blockID)
-              .setLength(streamEntry.currentPosition).setOffset(0)
+          new OmKeyLocationInfo.Builder().setBlockID(streamEntry.getBlockID())
+              .setLength(streamEntry.getCurrentPosition()).setOffset(0)
+              .setToken(streamEntry.getToken())
               .build();
-      LOG.debug("block written " + streamEntry.blockID + ", length "
-          + streamEntry.currentPosition + " bcsID " + streamEntry.blockID
-          .getBlockCommitSequenceId());
+      LOG.debug("block written " + streamEntry.getBlockID() + ", length "
+          + streamEntry.getCurrentPosition() + " bcsID "
+          + streamEntry.getBlockID().getBlockCommitSequenceId());
       locationInfoList.add(info);
     }
     return locationInfoList;
@@ -217,12 +217,26 @@ public class ChunkGroupOutputStream extends OutputStream {
       throws IOException {
     ContainerWithPipeline containerWithPipeline = scmClient
         .getContainerWithPipeline(subKeyInfo.getContainerID());
+    UserGroupInformation.getCurrentUser().addToken(subKeyInfo.getToken());
     XceiverClientSpi xceiverClient =
-        xceiverClientManager.acquireClient(containerWithPipeline.getPipeline());
-    streamEntries.add(new ChunkOutputStreamEntry(subKeyInfo.getBlockID(),
-        keyArgs.getKeyName(), xceiverClientManager, xceiverClient, requestID,
-        chunkSize, subKeyInfo.getLength(), streamBufferFlushSize,
-        streamBufferMaxSize, watchTimeout, buffer, checksum));
+        xceiverClientManager.acquireClient(containerWithPipeline.getPipeline()
+        );
+    ChunkOutputStreamEntry.Builder builder =
+        new ChunkOutputStreamEntry.Builder()
+            .setBlockID(subKeyInfo.getBlockID())
+            .setKey(keyArgs.getKeyName())
+            .setXceiverClientManager(xceiverClientManager)
+            .setXceiverClient(xceiverClient)
+            .setRequestId(requestID)
+            .setChunkSize(chunkSize)
+            .setLength(subKeyInfo.getLength())
+            .setStreamBufferFlushSize(streamBufferFlushSize)
+            .setStreamBufferMaxSize(streamBufferMaxSize)
+            .setWatchTimeout(watchTimeout)
+            .setBuffer(buffer)
+            .setChecksum(checksum)
+            .setToken(subKeyInfo.getToken());
+    streamEntries.add(builder.build());
   }
 
   @VisibleForTesting
@@ -329,7 +343,7 @@ public class ChunkGroupOutputStream extends OutputStream {
       ListIterator<ChunkOutputStreamEntry> streamEntryIterator =
           streamEntries.listIterator(currentStreamIndex);
       while (streamEntryIterator.hasNext()) {
-        if (streamEntryIterator.next().blockID.getContainerID()
+        if (streamEntryIterator.next().getBlockID().getContainerID()
             == containerID) {
           streamEntryIterator.remove();
         }
@@ -348,7 +362,7 @@ public class ChunkGroupOutputStream extends OutputStream {
       ListIterator<ChunkOutputStreamEntry> streamEntryIterator =
           streamEntries.listIterator(currentStreamIndex);
       while (streamEntryIterator.hasNext()) {
-        if (streamEntryIterator.next().currentPosition == 0) {
+        if (streamEntryIterator.next().getCurrentPosition() == 0) {
           streamEntryIterator.remove();
         }
       }
@@ -379,7 +393,7 @@ public class ChunkGroupOutputStream extends OutputStream {
 
     if (buffer.position() > 0) {
       //set the correct length for the current stream
-      streamEntry.currentPosition = lastSuccessfulFlushIndex;
+      streamEntry.setCurrentPosition(lastSuccessfulFlushIndex);
       // If the data is still cached in the underlying stream, we need to
       // allocate new block and write this data in the datanode.
       currentStreamIndex += 1;
@@ -395,7 +409,7 @@ public class ChunkGroupOutputStream extends OutputStream {
     }
     // discard subsequent pre allocated blocks from the streamEntries list
     // from the closed container
-    discardPreallocatedBlocks(streamEntry.blockID.getContainerID());
+    discardPreallocatedBlocks(streamEntry.getBlockID().getContainerID());
   }
 
   private boolean checkIfContainerIsClosed(IOException ioe) {
@@ -433,8 +447,8 @@ public class ChunkGroupOutputStream extends OutputStream {
   }
 
   private long getKeyLength() {
-    return streamEntries.parallelStream().mapToLong(e -> e.currentPosition)
-        .sum();
+    return streamEntries.parallelStream().mapToLong(
+        e -> e.getCurrentPosition()).sum();
   }
 
   /**
@@ -613,155 +627,6 @@ public class ChunkGroupOutputStream extends OutputStream {
       return new ChunkGroupOutputStream(openHandler, xceiverManager, scmClient,
           omClient, chunkSize, requestID, factor, type, streamBufferFlushSize,
           streamBufferMaxSize, blockSize, watchTimeout, checksum);
-    }
-  }
-
-  private static class ChunkOutputStreamEntry extends OutputStream {
-    private OutputStream outputStream;
-    private BlockID blockID;
-    private final String key;
-    private final XceiverClientManager xceiverClientManager;
-    private final XceiverClientSpi xceiverClient;
-    private final Checksum checksum;
-    private final String requestId;
-    private final int chunkSize;
-    // total number of bytes that should be written to this stream
-    private final long length;
-    // the current position of this stream 0 <= currentPosition < length
-    private long currentPosition;
-
-    private final long streamBufferFlushSize;
-    private final long streamBufferMaxSize;
-    private final long watchTimeout;
-    private ByteBuffer buffer;
-
-    ChunkOutputStreamEntry(BlockID blockID, String key,
-        XceiverClientManager xceiverClientManager,
-        XceiverClientSpi xceiverClient, String requestId, int chunkSize,
-        long length, long streamBufferFlushSize, long streamBufferMaxSize,
-        long watchTimeout, ByteBuffer buffer, Checksum checksum) {
-      this.outputStream = null;
-      this.blockID = blockID;
-      this.key = key;
-      this.xceiverClientManager = xceiverClientManager;
-      this.xceiverClient = xceiverClient;
-      this.requestId = requestId;
-      this.chunkSize = chunkSize;
-
-      this.length = length;
-      this.currentPosition = 0;
-      this.streamBufferFlushSize = streamBufferFlushSize;
-      this.streamBufferMaxSize = streamBufferMaxSize;
-      this.watchTimeout = watchTimeout;
-      this.buffer = buffer;
-      this.checksum = checksum;
-    }
-
-    /**
-     * For testing purpose, taking a some random created stream instance.
-     * @param  outputStream a existing writable output stream
-     * @param  length the length of data to write to the stream
-     */
-    ChunkOutputStreamEntry(OutputStream outputStream, long length,
-        Checksum checksum) {
-      this.outputStream = outputStream;
-      this.blockID = null;
-      this.key = null;
-      this.xceiverClientManager = null;
-      this.xceiverClient = null;
-      this.requestId = null;
-      this.chunkSize = -1;
-
-      this.length = length;
-      this.currentPosition = 0;
-      streamBufferFlushSize = 0;
-      streamBufferMaxSize = 0;
-      buffer = null;
-      watchTimeout = 0;
-      this.checksum = checksum;
-    }
-
-    long getLength() {
-      return length;
-    }
-
-    long getRemaining() {
-      return length - currentPosition;
-    }
-
-    private void checkStream() {
-      if (this.outputStream == null) {
-        this.outputStream =
-            new ChunkOutputStream(blockID, key, xceiverClientManager,
-                xceiverClient, requestId, chunkSize, streamBufferFlushSize,
-                streamBufferMaxSize, watchTimeout, buffer, checksum);
-      }
-    }
-
-    @Override
-    public void write(int b) throws IOException {
-      checkStream();
-      outputStream.write(b);
-      this.currentPosition += 1;
-    }
-
-    @Override
-    public void write(byte[] b, int off, int len) throws IOException {
-      checkStream();
-      outputStream.write(b, off, len);
-      this.currentPosition += len;
-    }
-
-    @Override
-    public void flush() throws IOException {
-      if (this.outputStream != null) {
-        this.outputStream.flush();
-      }
-    }
-
-    @Override
-    public void close() throws IOException {
-      if (this.outputStream != null) {
-        this.outputStream.close();
-        // after closing the chunkOutPutStream, blockId would have been
-        // reconstructed with updated bcsId
-        if (this.outputStream instanceof ChunkOutputStream) {
-          this.blockID = ((ChunkOutputStream) outputStream).getBlockID();
-        }
-      }
-    }
-
-    int getLastSuccessfulFlushIndex() throws IOException {
-      if (this.outputStream instanceof ChunkOutputStream) {
-        ChunkOutputStream out = (ChunkOutputStream) this.outputStream;
-        blockID = out.getBlockID();
-        return out.getLastSuccessfulFlushIndex();
-      } else if (outputStream == null) {
-        // For a pre allocated block for which no write has been initiated,
-        // the OutputStream will be null here.
-        // In such cases, the default blockCommitSequenceId will be 0
-        return 0;
-      }
-      throw new IOException("Invalid Output Stream for Key: " + key);
-    }
-
-    void cleanup() {
-      checkStream();
-      if (this.outputStream instanceof ChunkOutputStream) {
-        ChunkOutputStream out = (ChunkOutputStream) this.outputStream;
-        out.cleanup();
-      }
-    }
-
-    void writeOnRetry(int len) throws IOException {
-      checkStream();
-      if (this.outputStream instanceof ChunkOutputStream) {
-        ChunkOutputStream out = (ChunkOutputStream) this.outputStream;
-        out.writeOnRetry(len);
-        this.currentPosition += len;
-      } else {
-        throw new IOException("Invalid Output Stream for Key: " + key);
-      }
     }
   }
 

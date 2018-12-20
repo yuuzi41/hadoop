@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.ozone.container.ozoneimpl;
 
+import org.apache.hadoop.hdds.HddsConfigKeys;
 import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
@@ -229,7 +230,8 @@ public class TestOzoneContainer {
     XceiverClientGrpc client = null;
     try {
       OzoneConfiguration conf = newOzoneConfiguration();
-
+      conf.set(HddsConfigKeys.OZONE_METADATA_DIRS,
+          tempFolder.getRoot().getPath());
       client = createClientForTesting(conf);
       cluster = MiniOzoneCluster.newBuilder(conf)
           .setRandomContainerPort(false)
@@ -287,7 +289,8 @@ public class TestOzoneContainer {
     try {
 
       OzoneConfiguration conf = newOzoneConfiguration();
-
+      conf.set(HddsConfigKeys.OZONE_METADATA_DIRS,
+          tempFolder.getRoot().getPath());
       client = createClientForTesting(conf);
       cluster = MiniOzoneCluster.newBuilder(conf)
           .setRandomContainerPort(false)
@@ -384,7 +387,8 @@ public class TestOzoneContainer {
         writeChunkRequest, putBlockRequest;
     try {
       OzoneConfiguration conf = newOzoneConfiguration();
-
+      conf.set(HddsConfigKeys.OZONE_METADATA_DIRS,
+          tempFolder.getRoot().getPath());
       client = createClientForTesting(conf);
       cluster = MiniOzoneCluster.newBuilder(conf)
           .setRandomContainerPort(false)
@@ -502,7 +506,8 @@ public class TestOzoneContainer {
     XceiverClientGrpc client = null;
     try {
       OzoneConfiguration conf = newOzoneConfiguration();
-
+      conf.set(HddsConfigKeys.OZONE_METADATA_DIRS,
+          tempFolder.getRoot().getPath());
       client = createClientForTesting(conf);
       cluster = MiniOzoneCluster.newBuilder(conf)
           .setRandomContainerPort(false)

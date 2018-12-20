@@ -32,6 +32,7 @@ import org.apache.hadoop.hdds.scm.XceiverClientSpi;
 import org.apache.hadoop.hdds.scm.protocolPB.StorageContainerLocationProtocolClientSideTranslatorPB;
 import org.apache.hadoop.hdds.scm.storage.ChunkInputStream;
 import org.apache.hadoop.hdds.scm.storage.ContainerProtocolCalls;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.ratis.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,7 +137,7 @@ public class ChunkGroupInputStream extends InputStream implements Seekable {
       off += numBytesRead;
       len -= numBytesRead;
       if (current.getRemaining() <= 0 &&
-        ((currentStreamIndex + 1) < streamEntries.size())) {
+          ((currentStreamIndex + 1) < streamEntries.size())) {
         currentStreamIndex += 1;
       }
     }
@@ -296,6 +297,10 @@ public class ChunkGroupInputStream extends InputStream implements Seekable {
         groupInputStream.streamOffset[i] = length;
         ContainerProtos.DatanodeBlockID datanodeBlockID = blockID
             .getDatanodeBlockIDProtobuf();
+        if (omKeyLocationInfo.getToken() != null) {
+          UserGroupInformation.getCurrentUser().
+              addToken(omKeyLocationInfo.getToken());
+        }
         ContainerProtos.GetBlockResponseProto response = ContainerProtocolCalls
             .getBlock(xceiverClient, datanodeBlockID, requestId);
         List<ContainerProtos.ChunkInfo> chunks =
