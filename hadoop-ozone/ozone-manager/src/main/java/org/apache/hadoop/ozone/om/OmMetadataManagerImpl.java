@@ -91,6 +91,8 @@ public class OmMetadataManagerImpl implements OMMetadataManager {
    * |-------------------------------------------------------------------|
    * | s3Table            | s3BucketName -> /volumeName/bucketName       |
    * |-------------------------------------------------------------------|
+   * | s3SecretTable      | s3g_access_key_id -> s3Secret                |
+   * |-------------------------------------------------------------------|
    */
 
   private static final String USER_TABLE = "userTable";
@@ -100,6 +102,7 @@ public class OmMetadataManagerImpl implements OMMetadataManager {
   private static final String DELETED_TABLE = "deletedTable";
   private static final String OPEN_KEY_TABLE = "openKeyTable";
   private static final String S3_TABLE = "s3Table";
+  private static final String S3_SECRET_TABLE = "s3SecretTable";
 
   private DBStore store;
 
@@ -113,6 +116,7 @@ public class OmMetadataManagerImpl implements OMMetadataManager {
   private Table deletedTable;
   private Table openKeyTable;
   private Table s3Table;
+  private Table s3SecretTable;
 
   public OmMetadataManagerImpl(OzoneConfiguration conf) throws IOException {
     this.lock = new OzoneManagerLock(conf);
@@ -188,6 +192,7 @@ public class OmMetadataManagerImpl implements OMMetadataManager {
           .addTable(DELETED_TABLE)
           .addTable(OPEN_KEY_TABLE)
           .addTable(S3_TABLE)
+          .addTable(S3_SECRET_TABLE)
           .build();
 
       userTable = this.store.getTable(USER_TABLE);
@@ -210,6 +215,9 @@ public class OmMetadataManagerImpl implements OMMetadataManager {
 
       s3Table = this.store.getTable(S3_TABLE);
       checkTableStatus(s3Table, S3_TABLE);
+
+      s3SecretTable = this.store.getTable(S3_SECRET_TABLE);
+      checkTableStatus(s3SecretTable, S3_SECRET_TABLE);
     }
   }
 
@@ -652,5 +660,10 @@ public class OmMetadataManagerImpl implements OMMetadataManager {
       }
     }
     return count;
+  }
+
+  @Override
+  public Table<byte[], byte[]> getS3SecretTable() {
+    return s3SecretTable;
   }
 }

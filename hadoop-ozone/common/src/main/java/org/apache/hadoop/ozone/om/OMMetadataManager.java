@@ -247,6 +247,13 @@ public interface OMMetadataManager {
    */
 
   Table<byte[], byte[]> getS3Table();
+
+  /**
+   * Gets the S3 Secrets table.
+   * @return Table
+   */
+  Table<byte[], byte[]> getS3SecretTable();
+
   /**
    * Returns number of rows in a table.  This should not be used for very
    * large tables.
