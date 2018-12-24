@@ -222,6 +222,8 @@ public class SwiftProtocolConstants {
   public static final String DOT_LOCATION_AWARE = ".location-aware";
   public static final String DOT_APIKEY = ".apikey";
   public static final String DOT_USE_APIKEY = ".useApikey";
+  public static final String DOT_WITHOUT_AUTH = ".withoutAuth";
+  public static final String DOT_ACCOUNT_URL = ".account.url";
 
   /**
    * flag to say use public URL
@@ -243,6 +245,9 @@ public class SwiftProtocolConstants {
   public static final String SWIFT_PUBLIC_PROPERTY = FS_SWIFT + DOT_PUBLIC;
 
   public static final String SWIFT_USE_API_KEY_PROPERTY = FS_SWIFT + DOT_USE_APIKEY;
+
+  public static final String SWIFT_WITHOUT_AUTH_PROPERTY = FS_SWIFT + DOT_WITHOUT_AUTH;
+  public static final String SWIFT_ACCOUNT_URL_PROPERTY = FS_SWIFT + DOT_ACCOUNT_URL;
 
   public static final String SWIFT_LOCATION_AWARE_PROPERTY = FS_SWIFT +
             DOT_LOCATION_AWARE;

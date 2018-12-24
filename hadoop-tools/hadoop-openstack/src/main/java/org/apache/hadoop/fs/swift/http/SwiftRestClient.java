@@ -156,6 +156,12 @@ public final class SwiftRestClient {
   private boolean useKeystoneAuthentication = false;
 
   /**
+   * The URL of the account in swift.
+   */
+  private final URI accountUri;
+  private final boolean isWithoutAuth;
+
+  /**
    * The container this client is working with.
    */
   private final String container;
@@ -460,38 +466,78 @@ public final class SwiftRestClient {
                           Configuration conf)
       throws SwiftConfigurationException {
     Properties props = RestClientBindings.bind(filesystemURI, conf);
-    String stringAuthUri = getOption(props, SWIFT_AUTH_PROPERTY);
-    username = getOption(props, SWIFT_USERNAME_PROPERTY);
-    password = props.getProperty(SWIFT_PASSWORD_PROPERTY);
-    apiKey = props.getProperty(SWIFT_APIKEY_PROPERTY);
-    //optional
-    region = props.getProperty(SWIFT_REGION_PROPERTY);
-    //tenant is optional
-    tenant = props.getProperty(SWIFT_TENANT_PROPERTY);
-    //service is used for diagnostics
-    serviceProvider = props.getProperty(SWIFT_SERVICE_PROPERTY);
-    container = props.getProperty(SWIFT_CONTAINER_PROPERTY);
-    String isPubProp = props.getProperty(SWIFT_PUBLIC_PROPERTY, "false");
-    usePublicURL = "true".equals(isPubProp);
+    isWithoutAuth = "true".equals(props.getProperty(SWIFT_WITHOUT_AUTH_PROPERTY));
+    if (isWithoutAuth) {
+      String stringAccountUri = getOption(props, SWIFT_ACCOUNT_URL_PROPERTY);
+      try {
+        this.accountUri = new URI(stringAccountUri);
+      } catch (URISyntaxException e) {
+        throw new SwiftConfigurationException("The " + SWIFT_ACCOUNT_URL_PROPERTY
+                + " property was incorrect: "
+                + stringAccountUri, e);
+      }
 
-        if (apiKey == null && password == null) {
-            throw new SwiftConfigurationException(
-                    "Configuration for " + filesystemURI +" must contain either "
-                            + SWIFT_PASSWORD_PROPERTY + " or "
-                            + SWIFT_APIKEY_PROPERTY);
-        }
-        //create the (reusable) authentication request
-        if (password != null) {
-            authRequest = new PasswordAuthenticationRequest(tenant,
-                    new PasswordCredentials(
-                            username,
-                            password));
-        } else {
-            authRequest = new ApiKeyAuthenticationRequest(tenant,
-                    new ApiKeyCredentials(
-                            username, apiKey));
-            keystoneAuthRequest = new KeyStoneAuthRequest(tenant,
-                    new KeystoneApiKeyCredentials(username, apiKey));
+      //reset final fields
+      username = "";
+      password = "";
+      apiKey = "";
+      region = "";
+      tenant = "";
+
+      serviceProvider = props.getProperty(SWIFT_SERVICE_PROPERTY);
+      container = props.getProperty(SWIFT_CONTAINER_PROPERTY);
+
+      String isPubProp = props.getProperty(SWIFT_PUBLIC_PROPERTY, "false");
+      usePublicURL = "true".equals(isPubProp);
+
+      authRequest = null;
+      this.authUri = null;
+
+    } else {
+      String stringAuthUri = getOption(props, SWIFT_AUTH_PROPERTY);
+      username = getOption(props, SWIFT_USERNAME_PROPERTY);
+      password = props.getProperty(SWIFT_PASSWORD_PROPERTY);
+      apiKey = props.getProperty(SWIFT_APIKEY_PROPERTY);
+      //optional
+      region = props.getProperty(SWIFT_REGION_PROPERTY);
+      //tenant is optional
+      tenant = props.getProperty(SWIFT_TENANT_PROPERTY);
+      //service is used for diagnostics
+      serviceProvider = props.getProperty(SWIFT_SERVICE_PROPERTY);
+      container = props.getProperty(SWIFT_CONTAINER_PROPERTY);
+      String isPubProp = props.getProperty(SWIFT_PUBLIC_PROPERTY, "false");
+      usePublicURL = "true".equals(isPubProp);
+
+          if (apiKey == null && password == null) {
+              throw new SwiftConfigurationException(
+                      "Configuration for " + filesystemURI +" must contain either "
+                              + SWIFT_PASSWORD_PROPERTY + " or "
+                              + SWIFT_APIKEY_PROPERTY);
+          }
+          //create the (reusable) authentication request
+          if (password != null) {
+              authRequest = new PasswordAuthenticationRequest(tenant,
+                      new PasswordCredentials(
+                              username,
+                              password));
+          } else {
+              authRequest = new ApiKeyAuthenticationRequest(tenant,
+                      new ApiKeyCredentials(
+                              username, apiKey));
+              keystoneAuthRequest = new KeyStoneAuthRequest(tenant,
+                      new KeystoneApiKeyCredentials(username, apiKey));
+      }
+
+      try {
+        this.authUri = new URI(stringAuthUri);
+      } catch (URISyntaxException e) {
+        throw new SwiftConfigurationException("The " + SWIFT_AUTH_PROPERTY
+                + " property was incorrect: "
+                + stringAuthUri, e);
+      }
+
+      //reset final fields
+      this.accountUri = null;
     }
     locationAware = "true".equals(
       props.getProperty(SWIFT_LOCATION_AWARE_PROPERTY, "false"));
@@ -540,43 +586,64 @@ public final class SwiftRestClient {
       // SwiftConfigurationException instances
       throw new SwiftConfigurationException(e.toString(), e);
     }
-    //everything you need for diagnostics. The password is omitted.
-    serviceDescription = String.format(
-      "Service={%s} container={%s} uri={%s}"
-      + " tenant={%s} user={%s} region={%s}"
-      + " publicURL={%b}"
-      + " location aware={%b}"
-      + " partition size={%d KB}, buffer size={%d KB}"
-      + " block size={%d KB}"
-      + " connect timeout={%d}, retry count={%d}"
-      + " socket timeout={%d}"
-      + " throttle delay={%d}"
-      ,
-      serviceProvider,
-      container,
-      stringAuthUri,
-      tenant,
-      username,
-      region != null ? region : "(none)",
-      usePublicURL,
-      locationAware,
-      partSizeKB,
-      bufferSizeKB,
-      blocksizeKB,
-      connectTimeout,
-      retryCount,
-      socketTimeout,
-      throttleDelay
-      );
-    if (LOG.isDebugEnabled()) {
-      LOG.debug(serviceDescription);
-    }
-    try {
-      this.authUri = new URI(stringAuthUri);
-    } catch (URISyntaxException e) {
-      throw new SwiftConfigurationException("The " + SWIFT_AUTH_PROPERTY
-              + " property was incorrect: "
-              + stringAuthUri, e);
+    if (isWithoutAuth) {
+      //everything you need for diagnostics. The password is omitted.
+      serviceDescription = String.format(
+        "Service={%s} container={%s} uri={%s}"
+        + " location aware={%b}"
+        + " partition size={%d KB}, buffer size={%d KB}"
+        + " block size={%d KB}"
+        + " connect timeout={%d}, retry count={%d}"
+        + " socket timeout={%d}"
+        + " throttle delay={%d}"
+        ,
+        serviceProvider,
+        container,
+        this.accountUri.toString(),
+        locationAware,
+        partSizeKB,
+        bufferSizeKB,
+        blocksizeKB,
+        connectTimeout,
+        retryCount,
+        socketTimeout,
+        throttleDelay
+        );
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(serviceDescription);
+      }
+    } else {
+      //everything you need for diagnostics. The password is omitted.
+      serviceDescription = String.format(
+        "Service={%s} container={%s} uri={%s}"
+        + " tenant={%s} user={%s} region={%s}"
+        + " publicURL={%b}"
+        + " location aware={%b}"
+        + " partition size={%d KB}, buffer size={%d KB}"
+        + " block size={%d KB}"
+        + " connect timeout={%d}, retry count={%d}"
+        + " socket timeout={%d}"
+        + " throttle delay={%d}"
+        ,
+        serviceProvider,
+        container,
+        authUri.toString(),
+        tenant,
+        username,
+        region != null ? region : "(none)",
+        usePublicURL,
+        locationAware,
+        partSizeKB,
+        bufferSizeKB,
+        blocksizeKB,
+        connectTimeout,
+        retryCount,
+        socketTimeout,
+        throttleDelay
+        );
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(serviceDescription);
+      }
     }
   }
 
@@ -1317,7 +1384,35 @@ public final class SwiftRestClient {
    */
   private void authIfNeeded() throws IOException {
     if (getEndpointURI() == null) {
-      authenticate();
+      if (this.isWithoutAuth) {
+        // If without Authentication, use Account Uri
+        String[] pathElement = this.accountUri.getPath().split("/");
+        String path = SWIFT_OBJECT_AUTH_ENDPOINT
+                    + pathElement[2];
+        URI objectLocation;
+        try {
+          objectLocation = new URI(this.accountUri.getScheme(),
+                                  null,
+                                  this.accountUri.getHost(),
+                                  this.accountUri.getPort(),
+                                  path,
+                                  null,
+                                  null);
+        } catch (URISyntaxException e) {
+          throw new SwiftException("object endpoint URI is incorrect: "
+                                  + endpointURI
+                                  + " + " + path,
+                                  e);
+        }
+        // create dummy access token
+        AccessToken accessToken = new AccessToken();
+        accessToken.setId("0000000000000000000000ffffff");
+        accessToken.setExpires("2099-12-31T23:59:59.999");
+        accessToken.setTenant(null);
+        setAuthDetails(this.accountUri, objectLocation, accessToken);
+      } else {
+        authenticate();
+      }
     }
   }
 
